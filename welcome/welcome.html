@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lumen — Allow local files</title>
+  <link rel="icon" href="../icons/icon32.png">
+  <link rel="stylesheet" href="../shared/theme.css">
+  <link rel="stylesheet" href="welcome.css">
+  <script src="../shared/theme-boot.js"></script>
+  <script type="module" src="welcome.js"></script>
+</head>
+<body>
+  <main class="card">
+    <img class="logo" src="../icons/icon128.png" width="64" height="64" alt="">
+    <h1>Let Lumen open your local videos</h1>
+    <p class="lead">
+      Chrome blocks extensions from reading files on your computer by default.
+      Turn on one setting and Lumen will open your local videos automatically.
+    </p>
+
+    <div id="status" class="status" role="status">Checking…</div>
+
+    <ol class="steps">
+      <li>Click <strong>Open extension settings</strong> below
+        (or go to <code>chrome://extensions</code> and click <em>Details</em> under Lumen).</li>
+      <li>Turn on <strong>Allow access to file URLs</strong>.</li>
+      <li>Open your video again. Chrome reloads Lumen when this setting changes, so this tab may close.</li>
+    </ol>
+
+    <div class="actions">
+      <button id="btnSettings" class="btn-primary" type="button">Open extension settings</button>
+      <button id="btnRetry" class="btn-secondary" type="button" hidden>Play the video</button>
+      <button id="btnPlayer" class="btn-secondary" type="button">Open the player</button>
+    </div>
+    <p class="note">You can also drag and drop a video onto the player page: this works without the setting.</p>
+
+    <section>
+      <h2>Keyboard shortcuts</h2>
+      <dl class="shortcuts">
+        <dt><kbd>Space</kbd> <kbd>K</kbd></dt><dd>Play / pause</dd>
+        <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>−5 s / +5 s</dd>
+        <dt><kbd>J</kbd> <kbd>L</kbd></dt><dd>−10 s / +10 s</dd>
+        <dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Volume ±5%</dd>
+        <dt><kbd>M</kbd></dt><dd>Mute</dd>
+        <dt><kbd>F</kbd></dt><dd>Fullscreen</dd>
+        <dt><kbd>P</kbd></dt><dd>Picture-in-Picture</dd>
+        <dt><kbd>&lt;</kbd> <kbd>&gt;</kbd></dt><dd>Slower / faster</dd>
+        <dt><kbd>,</kbd> <kbd>.</kbd></dt><dd>Previous / next frame</dd>
+        <dt><kbd>T</kbd></dt><dd>Theater mode</dd>
+        <dt><kbd>D</kbd></dt><dd>Draw on the video</dd>
+        <dt><kbd>C</kbd></dt><dd>Subtitles on / off</dd>
+        <dt><kbd>+</kbd> <kbd>−</kbd></dt><dd>Zoom in / out (or Ctrl + scroll)</dd>
+        <dt><kbd>0</kbd>–<kbd>9</kbd></dt><dd>Jump to 0% … 90%</dd>
+        <dt><kbd>Esc</kbd></dt><dd>Close a menu / exit fullscreen</dd>
+      </dl>
+    </section>
+
+    <section>
+      <h2>Good to know</h2>
+      <ul class="limits">
+        <li>Lumen uses Chrome's codecs: MP4 (H.264/AAC) and WebM (VP8/VP9/AV1) always work; MKV, AVI and H.265 depend on your machine.</li>
+        <li>Only direct video files are handled: <code>.mp4 .m4v .webm .ogv .ogg .mov</code>. Streaming sites (YouTube, Netflix…) are not.</li>
+        <li>If another extension also redirects video links, the two may conflict.</li>
+        <li>You can turn the redirect off at any time by clicking the Lumen icon in the toolbar.</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

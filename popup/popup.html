@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Lumen</title>
+  <link rel="stylesheet" href="../shared/theme.css">
+  <link rel="stylesheet" href="popup.css">
+  <script src="../shared/theme-boot.js"></script>
+  <script type="module" src="popup.js"></script>
+</head>
+<body>
+  <header class="head">
+    <img src="../icons/icon32.png" width="24" height="24" alt="">
+    <span class="name">Lumen</span>
+  </header>
+
+  <label class="row switch-row">
+    <span>
+      <span class="row-title">Open videos with Lumen</span>
+      <span class="row-sub">Direct links and local video files</span>
+    </span>
+    <input id="toggleRedirect" type="checkbox" role="switch" class="switch" checked>
+  </label>
+
+  <div class="row status-row">
+    <span id="fileStatus" class="status">Checking local file access…</span>
+    <button id="btnFix" class="link" type="button" hidden>How to fix</button>
+  </div>
+
+  <button id="btnOpenPlayer" class="btn-primary" type="button">Open the player</button>
+  <p class="hint">Tip: you can also drag and drop a video onto the player page.</p>
+</body>
+</html>

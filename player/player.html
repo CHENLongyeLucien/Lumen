@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lumen</title>
+  <link rel="icon" href="../icons/icon32.png">
+  <link rel="stylesheet" href="../shared/theme.css">
+  <link rel="stylesheet" href="page.css">
+  <link rel="stylesheet" href="player.css">
+  <script src="../shared/theme-boot.js"></script>
+  <script type="module" src="player.js"></script>
+</head>
+<body>
+<div id="app" class="app show-dropzone">
+
+  <!-- ===== Page header (no search, no account: just the essentials) ===== -->
+  <header class="page-header">
+    <div class="logo">
+      <img src="../icons/icon32.png" width="24" height="24" alt="">
+      <span>Lumen</span>
+    </div>
+    <div class="header-actions">
+      <button id="btnHeaderOpen" class="pill-btn" type="button" data-icon="folder">
+        <span class="label">Open a file</span></button>
+      <button id="btnThemeToggle" class="icon-btn" type="button" aria-label="Switch theme"></button>
+      <div class="menu-anchor">
+        <button id="btnAppearance" class="icon-btn" type="button" data-icon="palette" aria-haspopup="menu"
+                aria-expanded="false" aria-controls="appearanceMenu" aria-label="Appearance" title="Appearance"></button>
+        <div id="appearanceMenu" class="menu page-menu" role="menu" aria-label="Appearance" hidden>
+          <div class="menu-title">Theme</div>
+          <div class="segmented" role="radiogroup" aria-label="Theme">
+            <button type="button" role="radio" data-theme-choice="light">Light</button>
+            <button type="button" role="radio" data-theme-choice="dark">Dark</button>
+            <button type="button" role="radio" data-theme-choice="system">System</button>
+          </div>
+          <div class="menu-title">Accent color</div>
+          <div id="accentSwatches" class="swatches" role="radiogroup" aria-label="Accent color"></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="page">
+    <div class="watch">
+
+      <!-- ===== Player (this element goes fullscreen) ===== -->
+      <div id="player" class="player">
+
+        <div id="stage" class="stage">
+          <div id="view" class="view">
+            <video id="video" preload="metadata" playsinline></video>
+            <canvas id="drawCanvas" class="draw-canvas" aria-label="Drawing layer"></canvas>
+          </div>
+        </div>
+
+        <div class="overlay-layer" aria-hidden="true">
+          <div id="spinner" class="spinner" hidden></div>
+          <div id="centerIcon" class="center-icon"></div>
+          <div id="seekFlashLeft" class="seek-flash left"><span></span></div>
+          <div id="seekFlashRight" class="seek-flash right"><span></span></div>
+        </div>
+
+        <!-- Title overlay, only shown in fullscreen -->
+        <header class="topbar">
+          <span id="fileTitle" class="file-title"></span>
+          <span class="brand">Lumen</span>
+        </header>
+
+        <!-- Drawing tools -->
+        <div id="drawToolbar" class="draw-toolbar" role="toolbar" aria-label="Drawing tools" hidden>
+          <button class="tool-btn" type="button" data-tool="pen" data-icon="pen" aria-pressed="true"
+                  aria-label="Pen" title="Pen"></button>
+          <button class="tool-btn" type="button" data-tool="highlighter" data-icon="highlighter" aria-pressed="false"
+                  aria-label="Highlighter" title="Highlighter"></button>
+          <button class="tool-btn" type="button" data-tool="eraser" data-icon="eraser" aria-pressed="false"
+                  aria-label="Eraser" title="Eraser"></button>
+          <span class="tool-sep"></span>
+          <div id="drawColors" class="draw-colors" role="radiogroup" aria-label="Color"></div>
+          <span class="tool-sep"></span>
+          <input id="drawSize" class="draw-size" type="range" min="1" max="24" value="4" aria-label="Brush size" title="Brush size">
+          <span class="tool-sep"></span>
+          <button id="drawUndo" class="tool-btn" type="button" data-icon="undo" aria-label="Undo (Ctrl+Z)" title="Undo (Ctrl+Z)"></button>
+          <button id="drawClear" class="tool-btn" type="button" data-icon="trash" aria-label="Clear drawing" title="Clear drawing"></button>
+          <button id="drawDone" class="tool-done" type="button">Done</button>
+        </div>
+
+        <!-- Zoom indicator -->
+        <div id="zoomChip" class="zoom-chip" hidden>
+          <button class="tool-btn" type="button" data-zoom="out" data-icon="zoomOut" aria-label="Zoom out (-)" title="Zoom out (-)"></button>
+          <span id="zoomValue" class="zoom-value">100%</span>
+          <button class="tool-btn" type="button" data-zoom="in" data-icon="zoomIn" aria-label="Zoom in (+)" title="Zoom in (+)"></button>
+          <button class="zoom-reset" type="button" data-zoom="reset">Reset</button>
+        </div>
+
+        <!-- Control bar -->
+        <div id="controls" class="controls">
+          <div id="progress" class="progress" role="slider" tabindex="0" aria-label="Seek"
+               aria-valuemin="0" aria-valuemax="0" aria-valuenow="0">
+            <div id="progressTrack" class="progress-track">
+              <div id="progressBuffered" class="progress-buffered"></div>
+              <div id="loopRange" class="loop-range" hidden></div>
+              <div id="progressPlayed" class="progress-played"></div>
+              <div id="progressThumb" class="progress-thumb"></div>
+            </div>
+            <div id="progressBubble" class="progress-bubble">00:00</div>
+          </div>
+
+          <div class="controls-row">
+            <div class="group">
+              <button id="btnPlay" class="btn" type="button" aria-label="Play (K)"></button>
+              <button id="btnBack" class="btn hide-narrow" type="button" data-icon="back10"
+                      aria-label="Back 10 seconds (J)" title="Back 10 seconds (J)"></button>
+              <button id="btnForward" class="btn hide-narrow" type="button" data-icon="forward10"
+                      aria-label="Forward 10 seconds (L)" title="Forward 10 seconds (L)"></button>
+              <div class="volume">
+                <button id="btnMute" class="btn" type="button" aria-label="Mute (M)"></button>
+                <input id="volumeSlider" class="volume-slider" type="range" min="0" max="100" step="1"
+                       value="100" aria-label="Volume">
+              </div>
+              <div class="time">
+                <span id="timeCurrent">00:00</span><span class="time-sep"> / </span><span id="timeDuration">00:00</span>
+              </div>
+            </div>
+
+            <div class="group">
+              <button id="btnLoop" class="btn btn-text hide-narrow" type="button" aria-pressed="false"
+                      aria-label="A-B loop: set point A" title="A-B loop: set point A">A-B</button>
+
+              <div class="menu-anchor">
+                <button id="btnSubtitles" class="btn" type="button" data-icon="subtitles" aria-haspopup="menu"
+                        aria-expanded="false" aria-controls="subtitlesMenu" aria-label="Subtitles (C)" title="Subtitles (C)"></button>
+                <div id="subtitlesMenu" class="menu" role="menu" aria-label="Subtitles" hidden>
+                  <div class="menu-title">Subtitles</div>
+                  <button class="menu-item" type="button" role="menuitemcheckbox" aria-checked="false"
+                          data-sub="toggle" data-icon="subtitles">Show subtitles
+                    <span id="subTrackName" class="menu-value">None</span></button>
+                  <button class="menu-item" type="button" role="menuitem" data-sub="load" data-icon="folder">Load a subtitle file…</button>
+                  <button class="menu-item" type="button" role="menuitem" data-sub="auto" data-icon="sparkle">Automatic captions…</button>
+                </div>
+              </div>
+
+              <div class="menu-anchor">
+                <button id="btnSpeed" class="btn btn-text" type="button" aria-haspopup="menu"
+                        aria-expanded="false" aria-controls="speedMenu" title="Playback speed (&lt; / &gt;)">1x</button>
+                <div id="speedMenu" class="menu speed-menu" role="menu" aria-label="Playback speed" hidden>
+                  <div class="menu-title">Speed</div>
+                  <div id="speedPresets" class="speed-grid"></div>
+                  <label class="speed-custom">
+                    <span>Custom</span>
+                    <input id="speedInput" type="number" min="0.1" max="16" step="0.05" inputmode="decimal"
+                           aria-label="Custom speed, from 0.1 to 16">
+                    <span class="muted">x</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="menu-anchor">
+                <button id="btnSettings" class="btn" type="button" data-icon="settings" aria-haspopup="menu"
+                        aria-expanded="false" aria-controls="settingsMenu" aria-label="Settings" title="Settings"></button>
+                <div id="settingsMenu" class="menu settings-menu" role="menu" aria-label="Settings" hidden>
+                  <button class="menu-item" type="button" role="menuitem" data-action="screenshot" data-icon="camera">Screenshot</button>
+                  <button class="menu-item" type="button" role="menuitem" data-action="info" data-icon="info">Video info</button>
+                  <button class="menu-item" type="button" role="menuitem" data-action="zoom" data-icon="zoomIn">
+                    Zoom in <span class="menu-value">+ / −</span></button>
+                  <div class="menu-separator"></div>
+                  <div class="menu-title">Image</div>
+                  <button class="menu-item" type="button" role="menuitem" data-action="rotate" data-icon="rotate">
+                    Rotate <span id="rotateValue" class="menu-value">0°</span></button>
+                  <button class="menu-item" type="button" role="menuitemcheckbox" aria-checked="false"
+                          data-action="mirror" data-icon="mirror">
+                    Mirror <span id="mirrorValue" class="menu-value">Off</span></button>
+                  <label class="menu-slider">
+                    <span class="menu-slider-head">Brightness <span class="menu-value" data-value-for="brightness">100%</span></span>
+                    <input type="range" min="0" max="200" value="100" data-filter="brightness">
+                  </label>
+                  <label class="menu-slider">
+                    <span class="menu-slider-head">Contrast <span class="menu-value" data-value-for="contrast">100%</span></span>
+                    <input type="range" min="0" max="200" value="100" data-filter="contrast">
+                  </label>
+                  <label class="menu-slider">
+                    <span class="menu-slider-head">Saturation <span class="menu-value" data-value-for="saturation">100%</span></span>
+                    <input type="range" min="0" max="200" value="100" data-filter="saturation">
+                  </label>
+                  <button class="menu-item" type="button" role="menuitem" data-action="reset-image" data-icon="reset">Reset image</button>
+                </div>
+              </div>
+
+              <button id="btnDraw" class="btn hide-narrow" type="button" data-icon="pen" aria-pressed="false"
+                      aria-label="Draw on the video (D)" title="Draw on the video (D)"></button>
+              <button id="btnPip" class="btn" type="button" data-icon="pip"
+                      aria-label="Picture-in-Picture (P)" title="Picture-in-Picture (P)"></button>
+              <button id="btnTheater" class="btn hide-narrow" type="button" aria-label="Theater mode (T)"></button>
+              <button id="btnFullscreen" class="btn" type="button" aria-label="Fullscreen (F)"></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Info panel (useful in fullscreen, where the details below are hidden) -->
+        <section id="infoPanel" class="info-panel" aria-labelledby="infoTitle" hidden>
+          <div class="info-head">
+            <h2 id="infoTitle">Video info</h2>
+            <button id="btnInfoClose" class="btn btn-small" type="button" data-icon="close" aria-label="Close info"></button>
+          </div>
+          <dl id="infoList"></dl>
+        </section>
+
+        <!-- Empty state / error state -->
+        <section id="dropzone" class="dropzone">
+          <div id="dropCard" class="drop-card">
+            <div class="drop-icon" data-icon="film"></div>
+            <h1 id="dropTitle">Drop a video here</h1>
+            <p id="dropMessage">or open one from your computer.</p>
+            <p id="dropDetail" class="drop-detail" hidden></p>
+            <button id="btnOpenFile" class="btn-primary" type="button">Open a file</button>
+            <p class="drop-limits">
+              Works best with MP4 (H.264/AAC) and WebM (VP8/VP9/AV1). MKV, AVI and H.265 depend on your machine.
+            </p>
+          </div>
+        </section>
+
+        <div id="toast" class="toast" role="status" aria-live="polite"></div>
+      </div>
+
+      <!-- ===== Details under the video ===== -->
+      <section id="details" class="details" aria-label="Video details">
+        <h1 id="videoTitle" class="video-title"></h1>
+        <div class="details-bar">
+          <div id="videoMeta" class="meta"></div>
+          <div class="actions">
+            <button id="actDraw" class="pill-btn" type="button" data-icon="pen" aria-pressed="false">
+              <span class="label">Draw</span></button>
+            <button id="actZoom" class="pill-btn" type="button" data-icon="zoomIn">
+              <span class="label">Zoom</span></button>
+            <button id="actScreenshot" class="pill-btn" type="button" data-icon="camera">
+              <span class="label">Screenshot</span></button>
+            <button id="actSubtitles" class="pill-btn" type="button" data-icon="subtitles">
+              <span class="label">Subtitles</span></button>
+            <button id="actTheater" class="pill-btn" type="button" data-icon="theater" aria-pressed="false">
+              <span class="label">Theater</span></button>
+          </div>
+        </div>
+        <div id="description" class="description is-collapsed">
+          <dl id="descList"></dl>
+          <button id="descToggle" class="desc-toggle" type="button" aria-expanded="false">Show more</button>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div id="dragOverlay" class="drag-overlay" hidden>
+    <div>Drop a video or subtitle file</div>
+  </div>
+
+  <input id="fileInput" type="file" accept="video/*,audio/*,.mkv,.mov,.m4v,.ogv,.avi,.srt,.vtt" hidden>
+  <input id="subtitleInput" type="file" accept=".srt,.vtt" hidden>
+</div>
+</body>
+</html>
