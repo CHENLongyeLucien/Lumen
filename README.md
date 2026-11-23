@@ -1,5 +1,10 @@
 # Lumen
 
+[![CI](https://github.com/CHENLongyeLucien/Lumen/actions/workflows/ci.yml/badge.svg)](https://github.com/CHENLongyeLucien/Lumen/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![Manifest V3](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6)
+
 A minimalist video player for Chrome (Manifest V3). When you open a video file in Chrome (a local `file:///…` file or a direct link to an `.mp4`, `.webm`, etc.), Lumen opens it in its own clean, dark player instead of Chrome's built-in one.
 
 Plain HTML/CSS/JS with no build step, no dependencies and no network calls.
