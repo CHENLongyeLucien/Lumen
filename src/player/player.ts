@@ -5,6 +5,7 @@ import { initAppearance } from './appearance';
 import { createContext } from './context';
 import { initControls } from './controls';
 import { initDetails } from './details';
+import { initDownload } from './download';
 import { initLoop } from './ab-loop';
 import { initFrames } from './frames';
 import { initPositionMemory } from './position-memory';
@@ -41,6 +42,7 @@ const settings = initSettings(ctx, {
   zoomIn: zoom.zoomIn,
 });
 ctx.drawAnnotations = annotate.drawOnto;
+initDownload(ctx);
 $('#actScreenshot').addEventListener('click', () => {
   void screenshot();
 });

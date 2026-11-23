@@ -860,6 +860,39 @@ input[type='range']:focus-visible {
 .btn-primary:hover {
   filter: brightness(1.08);
 }
+.drop-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+/* When a download is offered it is the main action: "Open a file" steps back. */
+.drop-actions:has([data-download]:not([hidden])) #btnOpenFile,
+.drop-actions:has(#btnPlayDownloaded:not([hidden])) #btnDownloadVideo {
+  background: transparent;
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+.btn-secondary {
+  padding: 10px 20px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-secondary:hover {
+  background: var(--hover);
+}
+.drop-card .download-status {
+  margin: 12px 0 0;
+  color: var(--text);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
 .btn-primary:active {
   transform: scale(0.97);
 }

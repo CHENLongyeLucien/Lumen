@@ -56,6 +56,7 @@ export const icons = {
     `<rect x="3" y="4" width="18" height="16" rx="2.5" ${stroke}/><path d="M7.5 4v16M16.5 4v16M3 9h4.5M3 15h4.5M16.5 9H21M16.5 15H21" ${stroke}/>`,
   ),
   close: svg(`<path d="M6 6l12 12M18 6L6 18" ${stroke}/>`),
+  download: svg(`<path d="M12 4v11M7 10.5l5 5 5-5M5 20h14" ${stroke}/>`),
   pen: svg(
     `<path d="M4 20l1.2-4.3L16.4 4.5a2.1 2.1 0 0 1 3 3L8.3 18.8z" ${stroke}/><path d="M14.5 6.5l3 3" ${stroke}/>`,
   ),

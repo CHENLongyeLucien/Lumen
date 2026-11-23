@@ -161,6 +161,7 @@
                 <div id="settingsMenu" class="menu settings-menu" role="dialog" aria-label="Settings" hidden>
                   <button class="menu-item" type="button" role="menuitem" data-action="screenshot" data-icon="camera">Screenshot</button>
                   <button class="menu-item" type="button" role="menuitem" data-action="info" data-icon="info">Video info</button>
+                  <button class="menu-item" type="button" data-download data-icon="download" hidden>Download video</button>
                   <button class="menu-item" type="button" role="menuitem" data-action="zoom" data-icon="zoomIn">
                     Zoom in <span class="menu-value">+ / −</span></button>
                   <div class="menu-separator"></div>
@@ -212,7 +213,13 @@
             <h1 id="dropTitle">Drop a video here</h1>
             <p id="dropMessage">or open one from your computer.</p>
             <p id="dropDetail" class="drop-detail" hidden></p>
-            <button id="btnOpenFile" class="btn-primary" type="button">Open a file</button>
+            <div class="drop-actions">
+              <button id="btnDownloadVideo" class="btn-primary" type="button" data-download hidden>Download the video</button>
+              <button id="btnPlayDownloaded" class="btn-primary" type="button" hidden>Play the downloaded video</button>
+              <button id="btnShowDownload" class="btn-secondary" type="button" hidden>Show in folder</button>
+              <button id="btnOpenFile" class="btn-primary" type="button">Open a file</button>
+            </div>
+            <p id="downloadStatus" class="download-status" role="status" hidden></p>
             <p class="drop-limits">
               Works best with MP4 (H.264/AAC) and WebM (VP8/VP9/AV1). MKV, AVI and H.265 depend on your machine.
             </p>
@@ -232,6 +239,8 @@
               <span class="label">Draw</span></button>
             <button id="actZoom" class="pill-btn" type="button" data-icon="zoomIn" aria-label="Zoom in (+)">
               <span class="label">Zoom</span></button>
+            <button id="actDownload" class="pill-btn" type="button" data-icon="download" data-download hidden aria-label="Download video">
+              <span class="label">Download</span></button>
             <button id="actScreenshot" class="pill-btn" type="button" data-icon="camera" aria-label="Screenshot">
               <span class="label">Screenshot</span></button>
             <button id="actSubtitles" class="pill-btn" type="button" data-icon="subtitles" aria-label="Subtitles (C)">

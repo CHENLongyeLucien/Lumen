@@ -39,6 +39,7 @@ Lumen is a Chrome extension (Manifest V3) written in strict TypeScript, with no 
 - Light, dark or system theme, and 8 accent colors (amber, orange, red, pink, purple, blue, green, white).
 - Keyboard-first: every action has a shortcut, and popovers support arrow keys, focus return and visible focus rings. Respects _prefers-reduced-motion_.
 - Clear error screens for unsupported formats, missing files, corrupted files and network errors, with a drop zone to open another file.
+- **Download web videos**: when a posted link can't play inside Lumen (sign-in needed, the site blocks embedding, unsupported format), _Download the video_ saves it with Chrome's own downloader, which uses your cookies. Then _Play the downloaded video_ opens the local copy. The same option is in the Settings menu and under the video for any web link.
 
 ### Keyboard shortcuts
 
@@ -170,6 +171,7 @@ src/
     settings.ts            settings popover, rotation/mirror/filters, info panel
     details.ts / file-stat.ts         details under the video / file date parsing (pure)
     format.ts              time, size, date, file-name helpers                   (pure)
+    download.ts / download-name.ts    download a web link / file names and paths  (pure)
     layout.ts, appearance.ts          theater mode; theme and accent menu
     icons.ts, utils.ts     inline SVG icons; DOM helpers, toast, popovers
 public/
@@ -181,7 +183,7 @@ public/
 ## Testing
 
 ```sh
-pnpm test        # 134 tests in 10 files
+pnpm test        # 144 tests in 11 files
 pnpm coverage    # same, with coverage
 ```
 
@@ -195,6 +197,7 @@ The unit tests cover the logic that can run without a browser:
 - Storage helpers against a mocked `chrome.storage`
 - Media-error mapping
 - Auto-hide and debounce (fake timers), directory-listing parsing, appearance parsing
+- Download file names, downloaded-file paths to `file://` URLs, progress text
 - The whole keyboard map, in jsdom
 
 **Coverage:** the 13 logic modules above are at **99.2 % of lines** and **92.8 % of branches**. Across all of `src/` the figure is **15.1 % of lines**, because the DOM-wiring modules (controls, drawing, zoom, pages…) are checked with the manual test guide below rather than unit tests.
@@ -203,25 +206,25 @@ The unit tests cover the logic that can run without a browser:
 
 **Automated** marks the parts now covered by unit tests. Those steps still need a quick look in Chrome, but the logic behind them is checked on every commit.
 
-| #   | Step                                                                                                                                                                                         | Automated                                               |
-| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| 1   | **Loading**: load `dist/`. The card shows no errors, and the _service worker_ console is clean.                                                                                              | Build only (CI)                                         |
-| 2   | **Help page**: with _Allow access to file URLs_ **off**, open a local `.mp4`. The help page opens (or Chrome's player stays; see Limitations). The popup shows "Local file access disabled". | —                                                       |
-| 3   | **Local file**: turn access **on**, open the `.mp4` again. The player appears and the tab title is the file name.                                                                            | URL detection, file-name decoding                       |
-| 4   | **Direct link**: open `https://…/something.mp4`. It redirects to Lumen.                                                                                                                      | URL detection (query, hash, case), anti-loop            |
-| 5   | **Popup**: turn off _Open videos with Lumen_, open the video again (native player), then turn it back on.                                                                                    | Storage helpers                                         |
-| 6   | **Basic controls**: play/pause (button, click, `Space`), drag the progress bar (bubble and buffered bar), volume and mute. Reload: the volume is kept.                                       | Time formatting, volume storage, debounce               |
-| 7   | **Speed**: pick `1.5x`, type `7.3` in _Custom_ (the button shows `7.3x`), then press `<` and `>`.                                                                                            | Clamping, presets, stepping, input parsing              |
-| 8   | **Fullscreen / PiP**: the buttons, `F`, a double-click in the middle, `P`.                                                                                                                   | Shortcut mapping                                        |
-| 9   | **Shortcuts**: every line of the table. Letters do nothing while the custom speed box has focus.                                                                                             | **Fully** (key map, AZERTY digits, repeat, text fields) |
-| 10  | **Auto-hide**: keep the mouse still for 3 s while playing; the UI and cursor hide, and moving brings them back. Paused: the UI stays.                                                        | Auto-hide timing and conditions                         |
-| 11  | **Errors**: open an unsupported file, then `file:///C:/does-not-exist.mp4` ("File not found or inaccessible").                                                                               | Error category and message mapping                      |
-| 12  | **Drag and drop**: drop a video, then an `.srt`. Subtitles appear and CC turns to the accent color.                                                                                          | SRT → VTT conversion, decoding                          |
-| 13  | **Watch page**: title, date, duration, quality and size under the video. `T` toggles theater mode.                                                                                           | Date, size, quality formatting; listing parsing         |
-| 14  | **Appearance**: light theme and a few accent colors. The player, page and popup follow.                                                                                                      | Appearance parsing and theme resolution                 |
-| 15  | **Draw / zoom**: `D`, draw, erase, undo, `Esc`. `Ctrl` + scroll to zoom, drag to pan; the drawing stays on the picture.                                                                      | —                                                       |
-| 16  | **Extras**: side double-clicks, A-B loop, screenshot, rotate/mirror, image sliders, info panel. Close mid-video and reopen: playback resumes.                                                | Resume rules                                            |
-| 17  | **Consoles**: no errors in the player console or the service worker console.                                                                                                                 | —                                                       |
+| #   | Step                                                                                                                                                                                                     | Automated                                               |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| 1   | **Loading**: load `dist/`. The card shows no errors, and the _service worker_ console is clean.                                                                                                          | Build only (CI)                                         |
+| 2   | **Help page**: with _Allow access to file URLs_ **off**, open a local `.mp4`. The help page opens (or Chrome's player stays; see Limitations). The popup shows "Local file access disabled".             | —                                                       |
+| 3   | **Local file**: turn access **on**, open the `.mp4` again. The player appears and the tab title is the file name.                                                                                        | URL detection, file-name decoding                       |
+| 4   | **Direct link**: open `https://…/something.mp4`. It redirects to Lumen.                                                                                                                                  | URL detection (query, hash, case), anti-loop            |
+| 5   | **Popup**: turn off _Open videos with Lumen_, open the video again (native player), then turn it back on.                                                                                                | Storage helpers                                         |
+| 6   | **Basic controls**: play/pause (button, click, `Space`), drag the progress bar (bubble and buffered bar), volume and mute. Reload: the volume is kept.                                                   | Time formatting, volume storage, debounce               |
+| 7   | **Speed**: pick `1.5x`, type `7.3` in _Custom_ (the button shows `7.3x`), then press `<` and `>`.                                                                                                        | Clamping, presets, stepping, input parsing              |
+| 8   | **Fullscreen / PiP**: the buttons, `F`, a double-click in the middle, `P`.                                                                                                                               | Shortcut mapping                                        |
+| 9   | **Shortcuts**: every line of the table. Letters do nothing while the custom speed box has focus.                                                                                                         | **Fully** (key map, AZERTY digits, repeat, text fields) |
+| 10  | **Auto-hide**: keep the mouse still for 3 s while playing; the UI and cursor hide, and moving brings them back. Paused: the UI stays.                                                                    | Auto-hide timing and conditions                         |
+| 11  | **Errors**: open an unsupported file, then `file:///C:/does-not-exist.mp4` ("File not found or inaccessible"). Open a web link that fails, click _Download the video_, then _Play the downloaded video_. | Error category and message mapping                      |
+| 12  | **Drag and drop**: drop a video, then an `.srt`. Subtitles appear and CC turns to the accent color.                                                                                                      | SRT → VTT conversion, decoding                          |
+| 13  | **Watch page**: title, date, duration, quality and size under the video. `T` toggles theater mode.                                                                                                       | Date, size, quality formatting; listing parsing         |
+| 14  | **Appearance**: light theme and a few accent colors. The player, page and popup follow.                                                                                                                  | Appearance parsing and theme resolution                 |
+| 15  | **Draw / zoom**: `D`, draw, erase, undo, `Esc`. `Ctrl` + scroll to zoom, drag to pan; the drawing stays on the picture.                                                                                  | —                                                       |
+| 16  | **Extras**: side double-clicks, A-B loop, screenshot, rotate/mirror, image sliders, info panel. Close mid-video and reopen: playback resumes.                                                            | Resume rules                                            |
+| 17  | **Consoles**: no errors in the player console or the service worker console.                                                                                                                             | —                                                       |
 
 ## Limitations
 
@@ -233,16 +236,18 @@ The unit tests cover the logic that can run without a browser:
 - Screenshots of videos from another website can be blocked by that site (cross-origin).
 - Automatic captions rely on Chrome's Live Caption. It supports a limited set of languages and makes you pick the language in Chrome's settings rather than detecting it.
 - File dates for local files come from Chrome's folder listing page. If Chrome can't read the folder, the date is simply not shown.
-- Not implemented yet from spec §5.2: volume boost above 100% (Web Audio) and the "Download" button for web links.
+- Not implemented yet from spec §5.2: volume boost above 100% (Web Audio).
+- Downloading a link only works if Chrome itself can download it: links that expire, need a special player, or stream in pieces (HLS/DASH) can't be saved.
 
 ## Privacy
 
 - No analytics, telemetry, accounts or remote scripts. Everything ships inside the extension, and the CSP is `script-src 'self'; object-src 'self'`.
-- Permissions: `webNavigation` (to spot video links), `storage` (settings, volume, resume points) and the `file:///*` host permission (so Chrome offers _Allow access to file URLs_).
+- Permissions: `webNavigation` (to spot video links), `storage` (settings, volume, resume points), `downloads` (only used when you click _Download_) and the `file:///*` host permission (so Chrome offers _Allow access to file URLs_).
 - Everything stays in your browser: settings and resume points in `chrome.storage`, appearance in `localStorage`. Resume points store the video URL or file name and a time.
 - The only requests Lumen makes are about the video you opened:
   - For a web link, a `HEAD` request to that same URL, to show its upload date and size.
   - For a local file, a read of its folder's listing page, to show its date.
+  - When you click _Download_, Chrome downloads that same URL into your Downloads folder.
   - Nothing is sent anywhere else.
 
 ## License

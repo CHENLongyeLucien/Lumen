@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "A minimalist, modern video player for your video files.",
   "minimum_chrome_version": "116",
-  "permissions": ["webNavigation", "storage"],
+  "permissions": ["webNavigation", "storage", "downloads"],
   "host_permissions": ["file:///*"],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
