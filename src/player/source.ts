@@ -3,8 +3,9 @@
 
 import { SOURCE_PARAM, WELCOME_PAGE } from '../shared/types';
 import type { PlayerContext, VideoSource } from './context';
+import { initFileDrop } from './file-drop';
 import { errorCategory, errorMessage, needsExistenceCheck, type ErrorMessage } from './errors';
-import { $, $as, extensionOf, fileNameFromUrl, showToast } from './utils';
+import { $, extensionOf, fileNameFromUrl, showToast } from './utils';
 
 const VIDEO_EXTENSIONS = new Set([
   'mp4',
@@ -99,8 +100,6 @@ export function initSource(
   const dropTitle = $('#dropTitle');
   const dropMessage = $('#dropMessage');
   const dropDetail = $('#dropDetail');
-  const fileInput = $as('#fileInput', HTMLInputElement);
-  const dragOverlay = $('#dragOverlay');
   const fileTitle = $('#fileTitle');
   let objectUrl: string | null = null;
 
@@ -244,44 +243,7 @@ export function initSource(
     }
   });
 
-  /* ---------- File picker ---------- */
-
-  $('#btnOpenFile').addEventListener('click', () => {
-    fileInput.click();
-  });
-  fileInput.addEventListener('change', () => {
-    if (fileInput.files?.length) openFiles(fileInput.files);
-    fileInput.value = '';
-  });
-
-  /* ---------- Drag and drop (whole page) ---------- */
-
-  let dragDepth = 0;
-  const hasFiles = (event: DragEvent): boolean => Boolean(event.dataTransfer?.types.includes('Files'));
-
-  window.addEventListener('dragenter', (event) => {
-    if (!hasFiles(event)) return;
-    event.preventDefault();
-    dragDepth += 1;
-    dragOverlay.hidden = false;
-  });
-  window.addEventListener('dragover', (event) => {
-    if (!hasFiles(event) || !event.dataTransfer) return;
-    event.preventDefault(); // required, otherwise Chrome navigates to the file
-    event.dataTransfer.dropEffect = 'copy';
-  });
-  window.addEventListener('dragleave', (event) => {
-    if (!hasFiles(event)) return;
-    dragDepth = Math.max(0, dragDepth - 1);
-    if (dragDepth === 0) dragOverlay.hidden = true;
-  });
-  window.addEventListener('drop', (event) => {
-    if (!hasFiles(event) || !event.dataTransfer) return;
-    event.preventDefault();
-    dragDepth = 0;
-    dragOverlay.hidden = true;
-    if (event.dataTransfer.files.length) openFiles(event.dataTransfer.files);
-  });
+  initFileDrop({ onFiles: openFiles });
 
   /* ---------- Start ---------- */
 

@@ -5,7 +5,10 @@ import { initAppearance } from './appearance';
 import { createContext } from './context';
 import { initControls } from './controls';
 import { initDetails } from './details';
-import { initExtras } from './extras';
+import { initLoop } from './ab-loop';
+import { initFrames } from './frames';
+import { initPositionMemory } from './position-memory';
+import { createScreenshot } from './screenshot';
 import { injectIcons } from './icons';
 import { initLayout } from './layout';
 import { initSettings } from './settings';
@@ -25,18 +28,21 @@ const layout = initLayout(ctx);
 const controls = initControls(ctx);
 const speed = initSpeed(ctx);
 const subtitles = initSubtitles(ctx);
-const extras = initExtras(ctx, { showUI: controls.showUI });
+const loop = initLoop(ctx);
+const frames = initFrames(ctx, { showUI: controls.showUI, onFrame: loop.enforce });
+initPositionMemory(ctx, { isLooping: loop.isLooping });
+const screenshot = createScreenshot(ctx);
 const annotate = initAnnotate(ctx, { showUI: controls.showUI });
 const zoom = initZoom(ctx, { showUI: controls.showUI });
-const details = initDetails(ctx, { getFrameRate: extras.getFrameRate });
+const details = initDetails(ctx, { getFrameRate: frames.getFrameRate });
 const settings = initSettings(ctx, {
-  screenshot: extras.screenshot,
+  screenshot,
   infoRows: details.infoRows,
   zoomIn: zoom.zoomIn,
 });
 ctx.drawAnnotations = annotate.drawOnto;
 $('#actScreenshot').addEventListener('click', () => {
-  void extras.screenshot();
+  void screenshot();
 });
 
 const source = initSource(ctx, {
@@ -64,7 +70,7 @@ initShortcuts({
   zoomIn: zoom.zoomIn,
   zoomOut: zoom.zoomOut,
   stepSpeed: speed.stepSpeed,
-  stepFrame: extras.stepFrame,
+  stepFrame: frames.stepFrame,
   // Esc: close a menu, the info panel, the drawing tools, then leave fullscreen.
   escape: () => closeAllMenus() || settings.closeInfo() || annotate.exit() || controls.exitFullscreen(),
 });
