@@ -5,21 +5,21 @@ import { isSavedPositions } from '../shared/types';
 import type { SavedPositions } from '../shared/types';
 import type { PlayerContext } from './context';
 import { isRememberable, positionToSave, shouldRestore, updatePositions } from './resume';
-import { $, clamp, formatTime, showToast } from './utils';
+import { $, $as, clamp, formatTime, showToast } from './utils';
 
 const SAVE_INTERVAL_MS = 5000;
 const DEFAULT_FRAME = 1 / 30;
 
 export interface ExtrasApi {
-  cycleLoop(): void;
-  stepFrame(direction: number): void;
-  screenshot(): Promise<void>;
-  getFrameRate(): number | null;
+  cycleLoop: () => void;
+  stepFrame: (direction: number) => void;
+  screenshot: () => Promise<void>;
+  getFrameRate: () => number | null;
 }
 
 export function initExtras(ctx: PlayerContext, { showUI }: { showUI: () => void }): ExtrasApi {
   const { video } = ctx;
-  const btnLoop = $<HTMLButtonElement>('#btnLoop');
+  const btnLoop = $as('#btnLoop', HTMLButtonElement);
   const loopRange = $('#loopRange');
   const hasDuration = (): boolean => Number.isFinite(video.duration) && video.duration > 0;
   const fmt = (t: number): string => formatTime(t, hasDuration() && video.duration >= 3600);
@@ -59,7 +59,11 @@ export function initExtras(ctx: PlayerContext, { showUI }: { showUI: () => void 
 
   function renderLoop(): void {
     const label =
-      loopA === null ? 'A-B loop: set point A' : loopB === null ? 'A-B loop: set point B' : 'A-B loop: turn off';
+      loopA === null
+        ? 'A-B loop: set point A'
+        : loopB === null
+          ? 'A-B loop: set point B'
+          : 'A-B loop: turn off';
     btnLoop.setAttribute('aria-label', label);
     btnLoop.title = label;
     btnLoop.setAttribute('aria-pressed', String(loopB !== null));
@@ -178,7 +182,8 @@ export function initExtras(ctx: PlayerContext, { showUI }: { showUI: () => void 
   let lastSaveAt = 0;
   let writeChain: Promise<void> = Promise.resolve();
 
-  const readPositions = (): Promise<SavedPositions> => readSetting('local', 'positions', {}, isSavedPositions);
+  const readPositions = (): Promise<SavedPositions> =>
+    readSetting('local', 'positions', {}, isSavedPositions);
 
   function writePosition(key: string, time: number | null): void {
     writeChain = writeChain

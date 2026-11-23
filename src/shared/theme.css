@@ -6,21 +6,42 @@
   --accent-ink: #1a1206;
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --dur: 180ms;
-  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
 }
 
 /* Accent colors */
-[data-accent="orange"] { --accent: #ff7a1a; --accent-ink: #1a0d00; }
-[data-accent="red"]    { --accent: #ff4d4f; --accent-ink: #ffffff; }
-[data-accent="pink"]   { --accent: #ff5fa2; --accent-ink: #ffffff; }
-[data-accent="purple"] { --accent: #a78bfa; --accent-ink: #12062b; }
-[data-accent="blue"]   { --accent: #4c9aff; --accent-ink: #ffffff; }
-[data-accent="green"]  { --accent: #34d399; --accent-ink: #04261a; }
-[data-accent="white"]  { --accent: #f4f4f5; --accent-ink: #111113; }
+[data-accent='orange'] {
+  --accent: #ff7a1a;
+  --accent-ink: #1a0d00;
+}
+[data-accent='red'] {
+  --accent: #ff4d4f;
+  --accent-ink: #ffffff;
+}
+[data-accent='pink'] {
+  --accent: #ff5fa2;
+  --accent-ink: #ffffff;
+}
+[data-accent='purple'] {
+  --accent: #a78bfa;
+  --accent-ink: #12062b;
+}
+[data-accent='blue'] {
+  --accent: #4c9aff;
+  --accent-ink: #ffffff;
+}
+[data-accent='green'] {
+  --accent: #34d399;
+  --accent-ink: #04261a;
+}
+[data-accent='white'] {
+  --accent: #f4f4f5;
+  --accent-ink: #111113;
+}
 
 /* Dark page theme (default) */
 :root,
-[data-theme="dark"] {
+[data-theme='dark'] {
   --bg: #0f0f10;
   --surface: #1c1c1f;
   --surface-2: #2a2a2e;
@@ -37,7 +58,7 @@
 }
 
 /* Light page theme */
-[data-theme="light"] {
+[data-theme='light'] {
   --bg: #ffffff;
   --surface: #f2f2f3;
   --surface-2: #e4e4e7;
@@ -51,7 +72,7 @@
   color-scheme: light;
 }
 /* A white accent would vanish on a white page: use near-black there instead. */
-[data-theme="light"][data-accent="white"] {
+[data-theme='light'][data-accent='white'] {
   --page-accent: #18181b;
   --page-accent-ink: #ffffff;
   --page-accent-text: #18181b;

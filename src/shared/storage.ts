@@ -7,8 +7,11 @@ type Schema<A extends StorageAreaName> = StorageSchemas[A];
 type Key<A extends StorageAreaName> = keyof Schema<A> & string;
 
 function storageArea(name: StorageAreaName): chrome.storage.StorageArea | null {
-  // `chrome` is undefined when a page is opened outside the extension (e.g. a dev server).
-  const api = (globalThis as { chrome?: typeof chrome }).chrome;
+  // Outside the extension (dev server, plain web page) `chrome` or `chrome.storage` may be missing,
+  // which the ambient @types/chrome declaration cannot express, hence this narrower view.
+  const api = (
+    globalThis as { chrome?: { storage?: Partial<Record<StorageAreaName, chrome.storage.StorageArea>> } }
+  ).chrome;
   return api?.storage?.[name] ?? null;
 }
 

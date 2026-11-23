@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { CODEC_HINT, errorCategory, errorMessage, MEDIA_ERR, needsExistenceCheck } from '../src/player/errors';
+import {
+  CODEC_HINT,
+  errorCategory,
+  errorMessage,
+  MEDIA_ERR,
+  needsExistenceCheck,
+} from '../src/player/errors';
 
 describe('errorCategory', () => {
   it('maps aborted loads', () => {
@@ -48,7 +54,15 @@ describe('errorMessage', () => {
   });
 
   it('has a distinct title for every category', () => {
-    const categories = ['aborted', 'network', 'unreadable', 'corrupted', 'missing', 'link', 'unsupported'] as const;
+    const categories = [
+      'aborted',
+      'network',
+      'unreadable',
+      'corrupted',
+      'missing',
+      'link',
+      'unsupported',
+    ] as const;
     const titles = categories.map((c) => errorMessage(c, '').title);
     expect(new Set(titles).size).toBe(categories.length);
     expect(errorMessage('missing', '').message).toContain('Allow access to file URLs');

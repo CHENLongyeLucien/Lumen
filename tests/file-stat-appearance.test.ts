@@ -12,7 +12,10 @@ describe('parseDirectoryListing', () => {
   ].join('\n');
 
   it('finds a file by its decoded name', () => {
-    expect(parseDirectoryListing(html, 'Holiday trip.mp4')).toEqual({ size: 10485760, modified: 1763856000000 });
+    expect(parseDirectoryListing(html, 'Holiday trip.mp4')).toEqual({
+      size: 10485760,
+      modified: 1763856000000,
+    });
   });
 
   it('handles escaped quotes and non-ASCII names', () => {
@@ -36,7 +39,10 @@ describe('appearance', () => {
   it('parses saved values and falls back field by field', () => {
     expect(parseAppearance('{"theme":"light","accent":"blue"}')).toEqual({ theme: 'light', accent: 'blue' });
     expect(parseAppearance('{"theme":"neon","accent":"blue"}')).toEqual({ theme: 'dark', accent: 'blue' });
-    expect(parseAppearance('{"theme":"system","accent":"gold"}')).toEqual({ theme: 'system', accent: 'amber' });
+    expect(parseAppearance('{"theme":"system","accent":"gold"}')).toEqual({
+      theme: 'system',
+      accent: 'amber',
+    });
   });
 
   it('returns defaults for missing or corrupt data', () => {

@@ -24,8 +24,8 @@ export interface PlayerContext {
   source: VideoSource | null;
   /** CSS filter currently applied to the video (used by screenshots). */
   imageFilter: string;
-  onSourceChange(listener: (source: VideoSource) => void): void;
-  emitSourceChange(source: VideoSource): void;
+  onSourceChange: (listener: (source: VideoSource) => void) => void;
+  emitSourceChange: (source: VideoSource) => void;
   // Cross-module hooks, set by the module that owns the feature.
   isDrawing?: () => boolean;
   wasPanning?: () => boolean;

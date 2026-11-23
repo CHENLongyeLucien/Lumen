@@ -10,9 +10,9 @@ const STEP = 1.25;
 const DRAG_THRESHOLD = 4; // px before a press becomes a pan instead of a click
 
 export interface ZoomApi {
-  zoomIn(): void;
-  zoomOut(): void;
-  reset(): void;
+  zoomIn: () => void;
+  zoomOut: () => void;
+  reset: () => void;
 }
 
 interface Drag {
@@ -54,7 +54,12 @@ export function initZoom(ctx: PlayerContext, { showUI }: { showUI: () => void })
   }
 
   /** Zooms keeping the point under (clientX, clientY) fixed; defaults to the center. */
-  function zoomTo(newZoom: number, clientX?: number, clientY?: number, options?: { animate?: boolean }): void {
+  function zoomTo(
+    newZoom: number,
+    clientX?: number,
+    clientY?: number,
+    options?: { animate?: boolean },
+  ): void {
     const rect = stage.getBoundingClientRect();
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
@@ -106,7 +111,7 @@ export function initZoom(ctx: PlayerContext, { showUI }: { showUI: () => void })
     drag = { x: event.clientX, y: event.clientY, panX, panY, moved: false, id: event.pointerId };
   });
   stage.addEventListener('pointermove', (event) => {
-    if (!drag || event.pointerId !== drag.id) return;
+    if (drag?.id !== event.pointerId) return;
     const dx = event.clientX - drag.x;
     const dy = event.clientY - drag.y;
     if (!drag.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;

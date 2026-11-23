@@ -24,7 +24,9 @@ afterEach(() => {
 describe('readSetting', () => {
   it('returns the stored value when it passes the guard', async () => {
     mockChromeStorage({ volume: { level: 0.4, muted: true } });
-    await expect(readSetting('local', 'volume', { level: 1, muted: false }, isVolumeSetting)).resolves.toEqual({
+    await expect(
+      readSetting('local', 'volume', { level: 1, muted: false }, isVolumeSetting),
+    ).resolves.toEqual({
       level: 0.4,
       muted: true,
     });
@@ -37,7 +39,9 @@ describe('readSetting', () => {
 
   it('returns the fallback when the stored value is invalid', async () => {
     mockChromeStorage({ volume: { level: 'loud' }, positions: { a: { time: 'x' } } });
-    await expect(readSetting('local', 'volume', { level: 1, muted: false }, isVolumeSetting)).resolves.toEqual({
+    await expect(
+      readSetting('local', 'volume', { level: 1, muted: false }, isVolumeSetting),
+    ).resolves.toEqual({
       level: 1,
       muted: false,
     });

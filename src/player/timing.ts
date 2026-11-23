@@ -15,9 +15,9 @@ export function debounce<A extends unknown[]>(fn: (...args: A) => void, ms: numb
 
 export interface AutoHide {
   /** Shows the UI now and schedules hiding after the default delay. */
-  show(): void;
+  show: () => void;
   /** Re-schedules hiding after `ms` (e.g. sooner when the pointer leaves). */
-  scheduleHide(ms: number): void;
+  scheduleHide: (ms: number) => void;
 }
 
 /**

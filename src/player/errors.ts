@@ -5,7 +5,8 @@ import type { SourceKind } from './context';
 /** HTMLMediaElement error codes (MediaError.MEDIA_ERR_*), duplicated so this module has no DOM dependency. */
 export const MEDIA_ERR = { ABORTED: 1, NETWORK: 2, DECODE: 3, SRC_NOT_SUPPORTED: 4 } as const;
 
-export type ErrorCategory = 'aborted' | 'network' | 'unreadable' | 'corrupted' | 'missing' | 'link' | 'unsupported';
+export type ErrorCategory =
+  'aborted' | 'network' | 'unreadable' | 'corrupted' | 'missing' | 'link' | 'unsupported';
 
 export interface ErrorMessage {
   title: string;
@@ -36,7 +37,11 @@ export const needsExistenceCheck = (code: number, kind: SourceKind): boolean =>
  * Classifies a media error. `fileExists` is the result of the existence check
  * for local files (false = not found, true/null = exists or unknown).
  */
-export function errorCategory(code: number, kind: SourceKind, fileExists: boolean | null = null): ErrorCategory {
+export function errorCategory(
+  code: number,
+  kind: SourceKind,
+  fileExists: boolean | null = null,
+): ErrorCategory {
   switch (code) {
     case MEDIA_ERR.ABORTED:
       return 'aborted';

@@ -2,19 +2,19 @@
 
 import type { PlayerContext } from './context';
 import { clampRate, formatRate, isSameRate, nextRate, parseRateInput, SPEED_PRESETS } from './speed-logic';
-import { $, setupMenu, showToast } from './utils';
+import { $, $as, setupMenu, showToast } from './utils';
 
 export interface SpeedApi {
-  setSpeed(rate: number, options?: { announce?: boolean }): void;
-  stepSpeed(direction: number): void;
+  setSpeed: (rate: number, options?: { announce?: boolean }) => void;
+  stepSpeed: (direction: number) => void;
 }
 
 export function initSpeed(ctx: PlayerContext): SpeedApi {
   const { video } = ctx;
-  const button = $<HTMLButtonElement>('#btnSpeed');
+  const button = $as('#btnSpeed', HTMLButtonElement);
   const menu = $('#speedMenu');
   const presets = $('#speedPresets');
-  const input = $<HTMLInputElement>('#speedInput');
+  const input = $as('#speedInput', HTMLInputElement);
 
   const menuApi = setupMenu(button, menu, {
     onOpen: () => menu.querySelector<HTMLElement>('[aria-checked="true"]')?.focus({ preventScroll: true }),

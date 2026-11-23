@@ -3,7 +3,7 @@
 
 import type { PlayerContext } from './context';
 import { renderDefinitionList, type InfoRow } from './details';
-import { $, closestTarget, setupMenu } from './utils';
+import { $, $as, closestTarget, setupMenu } from './utils';
 
 type FilterName = 'brightness' | 'contrast' | 'saturation';
 
@@ -15,13 +15,19 @@ interface ImageState {
   saturation: number;
 }
 
-const DEFAULT_IMAGE: ImageState = { rotation: 0, mirror: false, brightness: 100, contrast: 100, saturation: 100 };
+const DEFAULT_IMAGE: ImageState = {
+  rotation: 0,
+  mirror: false,
+  brightness: 100,
+  contrast: 100,
+  saturation: 100,
+};
 
 const isFilterName = (value: string | undefined): value is FilterName =>
   value === 'brightness' || value === 'contrast' || value === 'saturation';
 
 export interface SettingsApi {
-  closeInfo(): boolean;
+  closeInfo: () => boolean;
 }
 
 interface SettingsDeps {
@@ -30,7 +36,10 @@ interface SettingsDeps {
   zoomIn: () => void;
 }
 
-export function initSettings(ctx: PlayerContext, { screenshot, infoRows, zoomIn }: SettingsDeps): SettingsApi {
+export function initSettings(
+  ctx: PlayerContext,
+  { screenshot, infoRows, zoomIn }: SettingsDeps,
+): SettingsApi {
   const { video } = ctx;
   const stage = $('#stage');
   const menu = $('#settingsMenu');
@@ -127,7 +136,7 @@ export function initSettings(ctx: PlayerContext, { screenshot, infoRows, zoomIn 
 
   const panel = $('#infoPanel');
   const list = $('#infoList');
-  const btnClose = $<HTMLButtonElement>('#btnInfoClose');
+  const btnClose = $as('#btnInfoClose', HTMLButtonElement);
 
   const renderInfo = (): void => {
     renderDefinitionList(list, infoRows());

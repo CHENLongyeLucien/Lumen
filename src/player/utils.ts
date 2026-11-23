@@ -1,18 +1,25 @@
 // Small shared helpers: DOM, time formatting, toast, popover menus.
 
 /** querySelector that fails loudly: every selector used by the player exists in player.html. */
-export function $<T extends HTMLElement = HTMLElement>(selector: string, root: ParentNode = document): T {
-  const el = root.querySelector<T>(selector);
-  if (!el) throw new Error(`Lumen: missing element ${selector}`);
+export function $(selector: string, root: ParentNode = document): HTMLElement {
+  return $as(selector, HTMLElement, root);
+}
+
+/** Like `$`, but also checks the element's type at runtime (e.g. HTMLInputElement). */
+export function $as<T extends Element>(
+  selector: string,
+  type: abstract new (...args: never[]) => T,
+  root: ParentNode = document,
+): T {
+  const el = root.querySelector(selector);
+  if (!(el instanceof type)) throw new Error(`Lumen: missing or unexpected element ${selector}`);
   return el;
 }
 
-/** Closest ancestor (or self) of an event target matching `selector`. */
-export function closestTarget<T extends HTMLElement = HTMLElement>(
-  target: EventTarget | null,
-  selector: string,
-): T | null {
-  return target instanceof Element ? target.closest<T>(selector) : null;
+/** Closest HTML ancestor (or self) of an event target matching `selector`. */
+export function closestTarget(target: EventTarget | null, selector: string): HTMLElement | null {
+  const match = target instanceof Element ? target.closest(selector) : null;
+  return match instanceof HTMLElement ? match : null;
 }
 
 export { clamp, extensionOf, fileNameFromUrl, formatBytes, formatTime } from './format';
@@ -26,17 +33,19 @@ export function showToast(message: string, duration = 1800): void {
   el.textContent = message;
   el.classList.add('is-visible');
   window.clearTimeout(toastTimer);
-  toastTimer = window.setTimeout(() => el.classList.remove('is-visible'), duration);
+  toastTimer = window.setTimeout(() => {
+    el.classList.remove('is-visible');
+  }, duration);
 }
 
 /* ---------- Popover menus ---------- */
 
 export interface MenuApi {
-  isOpen(): boolean;
-  contains(node: Node): boolean;
-  open(): void;
-  close(): void;
-  toggle(): void;
+  isOpen: () => boolean;
+  contains: (node: Node) => boolean;
+  open: () => void;
+  close: () => void;
+  toggle: () => void;
 }
 
 const openMenus = new Set<MenuApi>();
@@ -56,7 +65,11 @@ export const anyMenuOpen = (): boolean => openMenus.size > 0;
 /** True right after a menu was closed by clicking outside it (so that click is "consumed"). */
 export const wasMenuJustClosed = (): boolean => performance.now() - lastOutsideCloseAt < 400;
 
-export function setupMenu(button: HTMLElement, menu: HTMLElement, options: { onOpen?: () => void } = {}): MenuApi {
+export function setupMenu(
+  button: HTMLElement,
+  menu: HTMLElement,
+  options: { onOpen?: () => void } = {},
+): MenuApi {
   const api: MenuApi = {
     isOpen: () => !menu.hidden,
     contains: (node) => menu.contains(node) || button.contains(node),

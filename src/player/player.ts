@@ -13,12 +13,12 @@ import { initShortcuts } from './shortcuts';
 import { initSource } from './source';
 import { initSpeed } from './speed';
 import { initSubtitles } from './subtitles';
-import { $, closeAllMenus } from './utils';
+import { $, $as, closeAllMenus } from './utils';
 import { initZoom } from './zoom';
 
 injectIcons();
 
-const ctx = createContext($('#app'), $('#player'), $<HTMLVideoElement>('#video'));
+const ctx = createContext($('#app'), $('#player'), $as('#video', HTMLVideoElement));
 
 initAppearance();
 const layout = initLayout(ctx);

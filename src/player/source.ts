@@ -4,11 +4,31 @@
 import { SOURCE_PARAM, WELCOME_PAGE } from '../shared/types';
 import type { PlayerContext, VideoSource } from './context';
 import { errorCategory, errorMessage, needsExistenceCheck, type ErrorMessage } from './errors';
-import { $, extensionOf, fileNameFromUrl, showToast } from './utils';
+import { $, $as, extensionOf, fileNameFromUrl, showToast } from './utils';
 
 const VIDEO_EXTENSIONS = new Set([
-  'mp4', 'm4v', 'webm', 'ogv', 'ogg', 'mov', 'mkv', 'avi', '3gp', 'ts', 'm2ts', 'mts',
-  'flv', 'wmv', 'mpg', 'mpeg', 'hevc', 'm4a', 'mp3', 'wav', 'flac', 'opus',
+  'mp4',
+  'm4v',
+  'webm',
+  'ogv',
+  'ogg',
+  'mov',
+  'mkv',
+  'avi',
+  '3gp',
+  'ts',
+  'm2ts',
+  'mts',
+  'flv',
+  'wmv',
+  'mpg',
+  'mpeg',
+  'hevc',
+  'm4a',
+  'mp3',
+  'wav',
+  'flac',
+  'opus',
 ]);
 const AUDIO_EXTENSIONS = new Set(['ogg', 'm4a', 'mp3', 'wav', 'flac', 'opus']);
 const SUBTITLE_EXTENSIONS = new Set(['srt', 'vtt']);
@@ -65,18 +85,21 @@ async function describeError(code: number, source: VideoSource): Promise<ErrorMe
 }
 
 export interface SourceApi {
-  openFiles(files: FileList | File[]): void;
-  isShowingVideo(): boolean;
+  openFiles: (files: FileList | File[]) => void;
+  isShowingVideo: () => boolean;
 }
 
-export function initSource(ctx: PlayerContext, { onSubtitleFile }: { onSubtitleFile: (file: File) => void }): SourceApi {
+export function initSource(
+  ctx: PlayerContext,
+  { onSubtitleFile }: { onSubtitleFile: (file: File) => void },
+): SourceApi {
   const { app, video } = ctx;
   const dropzone = $('#dropzone');
   const dropCard = $('#dropCard');
   const dropTitle = $('#dropTitle');
   const dropMessage = $('#dropMessage');
   const dropDetail = $('#dropDetail');
-  const fileInput = $<HTMLInputElement>('#fileInput');
+  const fileInput = $as('#fileInput', HTMLInputElement);
   const dragOverlay = $('#dragOverlay');
   const fileTitle = $('#fileTitle');
   let objectUrl: string | null = null;

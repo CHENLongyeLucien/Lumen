@@ -22,7 +22,9 @@ describe('srtToVtt', () => {
   });
 
   it('accepts cues without an index line', () => {
-    const vtt = srtToVtt('00:00:01,000 --> 00:00:02,000\nNo index\n\n00:00:03,000 --> 00:00:04,000\nStill fine');
+    const vtt = srtToVtt(
+      '00:00:01,000 --> 00:00:02,000\nNo index\n\n00:00:03,000 --> 00:00:04,000\nStill fine',
+    );
     expect(vtt).toBe(
       'WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nNo index\n\n00:00:03.000 --> 00:00:04.000\nStill fine\n',
     );

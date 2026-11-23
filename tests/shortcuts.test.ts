@@ -154,7 +154,14 @@ describe('player context', () => {
     const second = vi.fn();
     ctx.onSourceChange(first);
     ctx.onSourceChange(second);
-    const source = { url: 'blob:x', name: 'a.mp4', key: 'k', type: 'video/mp4', kind: 'Opened file', ext: 'mp4' } as const;
+    const source = {
+      url: 'blob:x',
+      name: 'a.mp4',
+      key: 'k',
+      type: 'video/mp4',
+      kind: 'Opened file',
+      ext: 'mp4',
+    } as const;
     ctx.emitSourceChange(source);
     expect(first).toHaveBeenCalledWith(source);
     expect(second).toHaveBeenCalledWith(source);

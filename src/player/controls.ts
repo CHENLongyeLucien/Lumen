@@ -6,24 +6,24 @@ import { isVolumeSetting } from '../shared/types';
 import type { PlayerContext } from './context';
 import { icons, type IconName } from './icons';
 import { createAutoHide, debounce } from './timing';
-import { $, anyMenuOpen, clamp, formatTime, onMenuChange, showToast, wasMenuJustClosed } from './utils';
+import { $, $as, anyMenuOpen, clamp, formatTime, onMenuChange, showToast, wasMenuJustClosed } from './utils';
 
 const HIDE_DELAY_MS = 3000;
 const CLICK_DELAY_MS = 220; // wait to tell a single click from a double click
 const SIDE_ZONE = 0.3; // left/right 30% of the video = double-click to skip
 
 export interface ControlsApi {
-  togglePlay(options?: { flash?: boolean }): void;
-  seekBy(delta: number): void;
-  seekTo(time: number): void;
-  seekToFraction(fraction: number): void;
-  changeVolume(delta: number): void;
-  toggleMute(options?: { announce?: boolean }): void;
-  toggleFullscreen(): void;
-  exitFullscreen(): boolean;
-  togglePip(): Promise<void>;
-  showUI(): void;
-  flashCenter(icon: IconName): void;
+  togglePlay: (options?: { flash?: boolean }) => void;
+  seekBy: (delta: number) => void;
+  seekTo: (time: number) => void;
+  seekToFraction: (fraction: number) => void;
+  changeVolume: (delta: number) => void;
+  toggleMute: (options?: { announce?: boolean }) => void;
+  toggleFullscreen: () => void;
+  exitFullscreen: () => boolean;
+  togglePip: () => Promise<void>;
+  showUI: () => void;
+  flashCenter: (icon: IconName) => void;
 }
 
 const listen = (target: EventTarget, types: string[], handler: () => void): void => {
@@ -34,11 +34,11 @@ export function initControls(ctx: PlayerContext): ControlsApi {
   const { player, video } = ctx;
   const stage = $('#stage');
   const controls = $('#controls');
-  const btnPlay = $<HTMLButtonElement>('#btnPlay');
-  const btnMute = $<HTMLButtonElement>('#btnMute');
-  const volumeSlider = $<HTMLInputElement>('#volumeSlider');
-  const btnPip = $<HTMLButtonElement>('#btnPip');
-  const btnFullscreen = $<HTMLButtonElement>('#btnFullscreen');
+  const btnPlay = $as('#btnPlay', HTMLButtonElement);
+  const btnMute = $as('#btnMute', HTMLButtonElement);
+  const volumeSlider = $as('#volumeSlider', HTMLInputElement);
+  const btnPip = $as('#btnPip', HTMLButtonElement);
+  const btnFullscreen = $as('#btnFullscreen', HTMLButtonElement);
   const progress = $('#progress');
   const track = $('#progressTrack');
   const played = $('#progressPlayed');
@@ -59,7 +59,8 @@ export function initControls(ctx: PlayerContext): ControlsApi {
     if (!ctx.source) return;
     if (video.paused || video.ended) {
       video.play().catch((err: unknown) => {
-        if (err instanceof DOMException && (err.name === 'AbortError' || err.name === 'NotSupportedError')) return;
+        if (err instanceof DOMException && (err.name === 'AbortError' || err.name === 'NotSupportedError'))
+          return;
         console.warn('Lumen: play() failed', err);
       });
     } else {
@@ -81,7 +82,7 @@ export function initControls(ctx: PlayerContext): ControlsApi {
   /** Restarts a CSS animation on an element. */
   function replayAnimation(el: HTMLElement): void {
     el.classList.remove('is-animating');
-    void el.offsetWidth; // force a reflow so the animation starts again
+    el.getBoundingClientRect(); // force a reflow so the animation starts again
     el.classList.add('is-animating');
   }
 
@@ -131,7 +132,7 @@ export function initControls(ctx: PlayerContext): ControlsApi {
 
   let clickTimer = 0;
   // Drawing and panning (zoom) also use the stage: their gestures are not clicks.
-  const stageBusy = (): boolean => Boolean(ctx.isDrawing?.() ?? false) || Boolean(ctx.wasPanning?.() ?? false);
+  const stageBusy = (): boolean => (ctx.isDrawing?.() ?? false) || (ctx.wasPanning?.() ?? false);
 
   stage.addEventListener('click', () => {
     if (!ctx.source || wasMenuJustClosed() || stageBusy()) return;
@@ -253,7 +254,9 @@ export function initControls(ctx: PlayerContext): ControlsApi {
     showUI();
   };
   listen(progress, ['pointerup', 'pointercancel'], endScrub);
-  progress.addEventListener('pointerenter', () => progress.classList.add('is-hovering'));
+  progress.addEventListener('pointerenter', () => {
+    progress.classList.add('is-hovering');
+  });
   progress.addEventListener('pointerleave', () => {
     if (!scrubbing) progress.classList.remove('is-hovering');
   });
@@ -401,9 +404,14 @@ export function initControls(ctx: PlayerContext): ControlsApi {
   let pointerOverControls = false;
   const autoHide = createAutoHide({
     delay: HIDE_DELAY_MS,
-    canHide: () => Boolean(ctx.source) && !video.paused && !scrubbing && !pointerOverControls && !anyMenuOpen(),
-    onShow: () => player.classList.remove('ui-hidden'),
-    onHide: () => player.classList.add('ui-hidden'),
+    canHide: () =>
+      Boolean(ctx.source) && !video.paused && !scrubbing && !pointerOverControls && !anyMenuOpen(),
+    onShow: () => {
+      player.classList.remove('ui-hidden');
+    },
+    onHide: () => {
+      player.classList.add('ui-hidden');
+    },
   });
   const showUI = (): void => {
     autoHide.show();

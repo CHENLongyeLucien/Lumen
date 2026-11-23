@@ -3,7 +3,15 @@
 
 import type { PlayerContext, VideoSource } from './context';
 import { parseDirectoryListing, splitFileUrl, type FileStat } from './file-stat';
-import { extensionOf, formatBytes, formatDate, formatTime, qualityLabel, relativeTime, safeDecode } from './format';
+import {
+  extensionOf,
+  formatBytes,
+  formatDate,
+  formatTime,
+  qualityLabel,
+  relativeTime,
+  safeDecode,
+} from './format';
 import { $ } from './utils';
 
 export type InfoRow = [label: string, value: string];
@@ -75,10 +83,13 @@ export function renderDefinitionList(list: HTMLElement, rows: readonly InfoRow[]
 }
 
 export interface DetailsApi {
-  infoRows(): InfoRow[];
+  infoRows: () => InfoRow[];
 }
 
-export function initDetails(ctx: PlayerContext, { getFrameRate }: { getFrameRate: () => number | null }): DetailsApi {
+export function initDetails(
+  ctx: PlayerContext,
+  { getFrameRate }: { getFrameRate: () => number | null },
+): DetailsApi {
   const { video } = ctx;
   const title = $('#videoTitle');
   const meta = $('#videoMeta');
@@ -97,7 +108,10 @@ export function initDetails(ctx: PlayerContext, { getFrameRate }: { getFrameRate
     }
     rows.push(
       ['Resolution', video.videoWidth ? `${String(video.videoWidth)} × ${String(video.videoHeight)}` : '—'],
-      ['Duration', Number.isFinite(video.duration) ? formatTime(video.duration, video.duration >= 3600) : '—'],
+      [
+        'Duration',
+        Number.isFinite(video.duration) ? formatTime(video.duration, video.duration >= 3600) : '—',
+      ],
       ['Type', source.type || '—'],
       ['Size', source.size ? formatBytes(source.size) : '—'],
       ['Frame rate', fps ? `≈ ${String(Math.round(fps))} fps` : 'measured while playing'],
@@ -118,7 +132,8 @@ export function initDetails(ctx: PlayerContext, { getFrameRate }: { getFrameRate
       span.title = `${relativeTime(source.modified)} (file date)`;
       items.push(span);
     }
-    if (Number.isFinite(video.duration)) items.push(textSpan(formatTime(video.duration, video.duration >= 3600)));
+    if (Number.isFinite(video.duration))
+      items.push(textSpan(formatTime(video.duration, video.duration >= 3600)));
     if (video.videoWidth) items.push(textSpan(qualityLabel(video.videoWidth, video.videoHeight)));
     const ext = source.ext || extensionOf(source.name);
     if (ext) {

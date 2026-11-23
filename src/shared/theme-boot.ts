@@ -11,5 +11,8 @@ try {
 } catch {
   // localStorage unavailable: keep the defaults
 }
-root.dataset.theme = resolveTheme(appearance.theme, window.matchMedia('(prefers-color-scheme: light)').matches);
+root.dataset.theme = resolveTheme(
+  appearance.theme,
+  window.matchMedia('(prefers-color-scheme: light)').matches,
+);
 root.dataset.accent = appearance.accent;

@@ -3,16 +3,17 @@
 import { readSetting, writeSetting } from '../shared/storage';
 import { isBoolean, PLAYER_PAGE, SYNC_DEFAULTS, WELCOME_PAGE } from '../shared/types';
 
-function byId<T extends HTMLElement>(id: string): T {
+/** getElementById with a runtime type check. */
+function byId<T extends HTMLElement>(id: string, type: abstract new (...args: never[]) => T): T {
   const el = document.getElementById(id);
-  if (!el) throw new Error(`Missing element #${id}`);
-  return el as T;
+  if (!(el instanceof type)) throw new Error(`Missing or unexpected element #${id}`);
+  return el;
 }
 
-const toggle = byId<HTMLInputElement>('toggleRedirect');
-const fileStatus = byId('fileStatus');
-const btnFix = byId<HTMLButtonElement>('btnFix');
-const btnOpenPlayer = byId<HTMLButtonElement>('btnOpenPlayer');
+const toggle = byId('toggleRedirect', HTMLInputElement);
+const fileStatus = byId('fileStatus', HTMLElement);
+const btnFix = byId('btnFix', HTMLButtonElement);
+const btnOpenPlayer = byId('btnOpenPlayer', HTMLButtonElement);
 
 toggle.checked = await readSetting('sync', 'redirectEnabled', SYNC_DEFAULTS.redirectEnabled, isBoolean);
 toggle.addEventListener('change', () => {

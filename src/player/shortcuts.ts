@@ -1,22 +1,22 @@
 // Keyboard shortcuts (README table, plus "," / "." frame by frame).
 
 export interface ShortcutActions {
-  hasSource(): boolean;
-  escape(): boolean;
-  togglePlay(options: { flash: boolean }): void;
-  seekBy(delta: number): void;
-  seekToFraction(fraction: number): void;
-  changeVolume(delta: number): void;
-  toggleMute(options: { announce: boolean }): void;
-  toggleFullscreen(): void;
-  togglePip(): void;
-  toggleTheater(): void;
-  toggleDraw(): void;
-  toggleSubtitles(): void;
-  zoomIn(): void;
-  zoomOut(): void;
-  stepSpeed(direction: number): void;
-  stepFrame(direction: number): void;
+  hasSource: () => boolean;
+  escape: () => boolean;
+  togglePlay: (options: { flash: boolean }) => void;
+  seekBy: (delta: number) => void;
+  seekToFraction: (fraction: number) => void;
+  changeVolume: (delta: number) => void;
+  toggleMute: (options: { announce: boolean }) => void;
+  toggleFullscreen: () => void;
+  togglePip: () => void;
+  toggleTheater: () => void;
+  toggleDraw: () => void;
+  toggleSubtitles: () => void;
+  zoomIn: () => void;
+  zoomOut: () => void;
+  stepSpeed: (direction: number) => void;
+  stepFrame: (direction: number) => void;
 }
 
 /** True when the key press is meant for a text field. */

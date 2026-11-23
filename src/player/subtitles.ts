@@ -2,20 +2,20 @@
 
 import type { PlayerContext } from './context';
 import { decodeText, normalizeVtt, srtToVtt } from './subtitle-format';
-import { $, closestTarget, extensionOf, setupMenu, showToast } from './utils';
+import { $, $as, closestTarget, extensionOf, setupMenu, showToast } from './utils';
 
 export interface SubtitlesApi {
-  loadFile(file: File): Promise<void>;
-  pickFile(): void;
-  toggle(): boolean;
+  loadFile: (file: File) => Promise<void>;
+  pickFile: () => void;
+  toggle: () => boolean;
 }
 
 export function initSubtitles(ctx: PlayerContext): SubtitlesApi {
   const { video } = ctx;
-  const button = $<HTMLButtonElement>('#btnSubtitles');
-  const input = $<HTMLInputElement>('#subtitleInput');
+  const button = $as('#btnSubtitles', HTMLButtonElement);
+  const input = $as('#subtitleInput', HTMLInputElement);
   const menu = $('#subtitlesMenu');
-  const toggleItem = $<HTMLButtonElement>('[data-sub="toggle"]', menu);
+  const toggleItem = $as('[data-sub="toggle"]', HTMLButtonElement, menu);
   const trackName = $('#subTrackName');
   const chip = $('#actSubtitles');
   let trackEl: HTMLTrackElement | null = null;
@@ -87,7 +87,10 @@ export function initSubtitles(ctx: PlayerContext): SubtitlesApi {
 
   /** Automatic captions: Chrome's built-in Live Caption works on any video, offline. */
   function openAutomaticCaptions(): void {
-    showToast('Turn on "Live Caption" in Chrome settings: captions then appear automatically for any video', 6000);
+    showToast(
+      'Turn on "Live Caption" in Chrome settings: captions then appear automatically for any video',
+      6000,
+    );
     try {
       void chrome.tabs.create({ url: 'chrome://settings/accessibility' });
     } catch {

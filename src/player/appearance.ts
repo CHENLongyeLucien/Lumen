@@ -5,7 +5,7 @@ import { parseAppearance, resolveTheme } from '../shared/appearance-state';
 import { APPEARANCE_KEY } from '../shared/types';
 import type { AccentId, Appearance, ThemeChoice } from '../shared/types';
 import { icons } from './icons';
-import { $, setupMenu } from './utils';
+import { $, $as, setupMenu } from './utils';
 
 export const ACCENTS: readonly { id: AccentId; label: string; color: string }[] = [
   { id: 'amber', label: 'Amber', color: '#ffb454' },
@@ -33,7 +33,7 @@ function readAppearance(): Appearance {
 
 export function initAppearance(): void {
   const root = document.documentElement;
-  const btnToggle = $<HTMLButtonElement>('#btnThemeToggle');
+  const btnToggle = $as('#btnThemeToggle', HTMLButtonElement);
   const menu = $('#appearanceMenu');
   const swatches = $('#accentSwatches');
   let appearance = readAppearance();

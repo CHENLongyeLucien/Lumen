@@ -32,7 +32,9 @@ async function hasFileAccess(): Promise<boolean> {
   }
 }
 
-async function handleNavigation(details: chrome.webNavigation.WebNavigationBaseCallbackDetails): Promise<void> {
+async function handleNavigation(
+  details: chrome.webNavigation.WebNavigationBaseCallbackDetails,
+): Promise<void> {
   if (!shouldRedirect(details, EXTENSION_ORIGIN)) return;
 
   await settingsReady;
@@ -58,7 +60,7 @@ chrome.webNavigation.onBeforeNavigate.addListener(
 
 // On first install, explain how to enable local file access if needed.
 chrome.runtime.onInstalled.addListener(({ reason }) => {
-  if (reason !== chrome.runtime.OnInstalledReason.INSTALL) return;
+  if (reason !== 'install') return;
   void hasFileAccess().then((allowed) => {
     if (!allowed) void chrome.tabs.create({ url: WELCOME_URL });
   });

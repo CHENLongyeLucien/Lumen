@@ -3,14 +3,14 @@
 import { THEATER_KEY } from '../shared/types';
 import type { PlayerContext } from './context';
 import { icons } from './icons';
-import { $, showToast } from './utils';
+import { $, $as, showToast } from './utils';
 
 export interface LayoutApi {
-  toggleTheater(): void;
+  toggleTheater: () => void;
 }
 
 export function initLayout(ctx: PlayerContext): LayoutApi {
-  const btnTheater = $<HTMLButtonElement>('#btnTheater');
+  const btnTheater = $as('#btnTheater', HTMLButtonElement);
   const chip = $('#actTheater');
   let theater: boolean;
   try {

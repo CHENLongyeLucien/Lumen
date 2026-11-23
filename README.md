@@ -30,29 +30,29 @@ After you change `background.js` or `manifest.json`, click **Reload** on the ext
 - **Appearance** (palette icon in the header): light, dark or system theme, and an accent color (amber, orange, red, pink, purple, blue, green or white). The video player itself always stays dark. The choice applies to every Lumen page.
 - **Draw on the video** (`D` or the pen button): pen, highlighter, eraser, 8 colors, brush size, undo (`Ctrl+Z`) and clear. Drawings stay in place when you resize or zoom, and they are included in screenshots.
 - **Zoom**: `Ctrl` + scroll (or pinch on a trackpad), `+` / `-`, or the Zoom button. While zoomed, drag the video to move around.
-- **Automatic captions**: the subtitles menu → *Automatic captions…* opens Chrome's **Live Caption** setting. Chrome then captions any video automatically, offline.
+- **Automatic captions**: the subtitles menu → _Automatic captions…_ opens Chrome's **Live Caption** setting. Chrome then captions any video automatically, offline.
 - **Fallback**: with no video, or after an error, a drop zone and an **Open a file** button appear.
 - **Errors**: separate messages for unsupported formats, missing or unreadable files, corrupted files and network problems.
 
 ### Keyboard shortcuts
 
-| Key | Action |
-|---|---|
-| `Space` / `K` | Play / pause |
-| `←` / `→` | −5 s / +5 s |
-| `J` / `L` | −10 s / +10 s |
-| `↑` / `↓` | Volume +5% / −5% |
-| `M` | Mute |
-| `F` | Fullscreen |
-| `P` | Picture-in-Picture |
-| `<` / `>` | Speed down / up |
-| `,` / `.` | Previous / next frame |
-| `T` | Theater mode |
-| `D` | Draw on the video |
-| `C` | Subtitles on / off |
-| `+` / `-` | Zoom in / out |
-| `0`–`9` | Jump to 0% … 90% |
-| `Esc` | Close a menu, the info panel or the drawing tools / exit fullscreen |
+| Key           | Action                                                              |
+| ------------- | ------------------------------------------------------------------- |
+| `Space` / `K` | Play / pause                                                        |
+| `←` / `→`     | −5 s / +5 s                                                         |
+| `J` / `L`     | −10 s / +10 s                                                       |
+| `↑` / `↓`     | Volume +5% / −5%                                                    |
+| `M`           | Mute                                                                |
+| `F`           | Fullscreen                                                          |
+| `P`           | Picture-in-Picture                                                  |
+| `<` / `>`     | Speed down / up                                                     |
+| `,` / `.`     | Previous / next frame                                               |
+| `T`           | Theater mode                                                        |
+| `D`           | Draw on the video                                                   |
+| `C`           | Subtitles on / off                                                  |
+| `+` / `-`     | Zoom in / out                                                       |
+| `0`–`9`       | Jump to 0% … 90%                                                    |
+| `Esc`         | Close a menu, the info panel or the drawing tools / exit fullscreen |
 
 Shortcuts are ignored while you type in a text field (for example the custom speed box).
 
@@ -94,17 +94,17 @@ The extension asks for the fewest permissions it can. `tabs` isn't needed (`tabs
 
 Get two sample files ready: a short `.mp4` (H.264), and a file Chrome can't decode (for example an `.mkv` with H.265, or any non-video file renamed to `.mp4`).
 
-1. **Loading**: load the extension. Its card shows no errors. Open the *service worker* link and check that its console is clean.
-2. **Help page**: with *Allow access to file URLs* **off**, open a local `.mp4`. Either the Lumen help page opens, or Chrome's native player stays; see Limitations. The popup shows "Local file access disabled".
+1. **Loading**: load the extension. Its card shows no errors. Open the _service worker_ link and check that its console is clean.
+2. **Help page**: with _Allow access to file URLs_ **off**, open a local `.mp4`. Either the Lumen help page opens, or Chrome's native player stays; see Limitations. The popup shows "Local file access disabled".
 3. **Local file**: turn the setting **on** and open the `.mp4` again. The Lumen player appears and the tab title is the file name.
 4. **Direct link**: open an `https://…/something.mp4` link. It redirects to Lumen.
-5. **Popup**: click the icon and turn off *Open videos with Lumen*. Open the video again: Chrome's native player is used. Turn it back on.
+5. **Popup**: click the icon and turn off _Open videos with Lumen_. Open the video again: Chrome's native player is used. Turn it back on.
 6. **Basic controls**: try play/pause (button, click on the video, `Space`), clicking and dragging the progress bar (watch the hover bubble and the buffered bar), and volume and mute. Reload the page: the volume is the same.
-7. **Speed**: pick `1.5x` from the menu, then type `7.3` in *Custom*. The button shows `7.3x`. Press `<` and `>`.
+7. **Speed**: pick `1.5x` from the menu, then type `7.3` in _Custom_. The button shows `7.3x`. Press `<` and `>`.
 8. **Fullscreen / PiP**: try the buttons, `F`, a double-click in the middle, and `P`.
 9. **Shortcuts**: go through every line of the table above. While the custom speed box has focus, letters don't trigger shortcuts.
 10. **Auto-hide**: during playback, keep the mouse still for 3 seconds. The UI and cursor disappear, and moving the mouse brings them back. While paused, the UI stays.
-11. **Errors**: open the unsupported file. A clear message appears with an *Open a file* button. Then open `file:///C:/does-not-exist.mp4`: you get "File not found or inaccessible".
+11. **Errors**: open the unsupported file. A clear message appears with an _Open a file_ button. Then open `file:///C:/does-not-exist.mp4`: you get "File not found or inaccessible".
 12. **Drag and drop**: drop a video onto the player and it plays. Drop an `.srt` file and the subtitles appear (the CC button turns amber).
 13. **Watch page**: the title, date, duration, quality and size show under the video. Press `T` for theater mode, then `T` again to go back.
 14. **Appearance**: switch to the light theme and pick a few accent colors. The progress bar, the buttons and the popup all change.
@@ -115,7 +115,7 @@ Get two sample files ready: a short `.mp4` (H.264), and a file Chrome can't deco
 ## Limitations
 
 - Lumen depends on Chrome's codecs. MP4 (H.264/AAC) and WebM (VP8/VP9/AV1) are fine. MKV, AVI and H.265 depend on the machine, and sometimes only the audio plays (Lumen warns you when that happens).
-- Local files need *Allow access to file URLs*. Without it, Chrome doesn't tell the extension about `file://` navigations at all. In that case the help page is shown on install and from the popup.
+- Local files need _Allow access to file URLs_. Without it, Chrome doesn't tell the extension about `file://` navigations at all. In that case the help page is shown on install and from the popup.
 - Streaming platforms (YouTube, Netflix, DRM) are out of scope.
 - If another extension also redirects the same navigation, the result is unpredictable.
 - Plain `http://` links can be blocked or upgraded to `https://` by Chrome's mixed-content rules, because the player page is a secure context.

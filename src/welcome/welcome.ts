@@ -2,16 +2,17 @@
 
 import { PLAYER_PAGE, SOURCE_PARAM } from '../shared/types';
 
-function byId<T extends HTMLElement>(id: string): T {
+/** getElementById with a runtime type check. */
+function byId<T extends HTMLElement>(id: string, type: abstract new (...args: never[]) => T): T {
   const el = document.getElementById(id);
-  if (!el) throw new Error(`Missing element #${id}`);
-  return el as T;
+  if (!(el instanceof type)) throw new Error(`Missing or unexpected element #${id}`);
+  return el;
 }
 
-const status = byId('status');
-const btnSettings = byId<HTMLButtonElement>('btnSettings');
-const btnRetry = byId<HTMLButtonElement>('btnRetry');
-const btnPlayer = byId<HTMLButtonElement>('btnPlayer');
+const status = byId('status', HTMLElement);
+const btnSettings = byId('btnSettings', HTMLButtonElement);
+const btnRetry = byId('btnRetry', HTMLButtonElement);
+const btnPlayer = byId('btnPlayer', HTMLButtonElement);
 
 const src = new URLSearchParams(location.search).get(SOURCE_PARAM);
 const playerUrl = chrome.runtime.getURL(PLAYER_PAGE);

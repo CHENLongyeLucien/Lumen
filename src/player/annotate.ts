@@ -3,13 +3,16 @@
 // so they stay in place when the window is resized or the video zoomed.
 
 import type { PlayerContext } from './context';
-import { $, clamp, showToast } from './utils';
+import { $, $as, clamp, showToast } from './utils';
 
 const COLORS = ['#ff4d4f', '#ffb454', '#ffe066', '#34d399', '#4c9aff', '#a78bfa', '#ffffff', '#111111'];
 
 type Tool = 'pen' | 'highlighter' | 'eraser';
 
-const TOOL_SETTINGS: Record<Tool, { alpha: number; widthFactor: number; composite: GlobalCompositeOperation }> = {
+const TOOL_SETTINGS: Record<
+  Tool,
+  { alpha: number; widthFactor: number; composite: GlobalCompositeOperation }
+> = {
   pen: { alpha: 1, widthFactor: 1, composite: 'source-over' },
   highlighter: { alpha: 0.35, widthFactor: 4, composite: 'source-over' },
   eraser: { alpha: 1, widthFactor: 4, composite: 'destination-out' },
@@ -64,18 +67,18 @@ function renderStrokes(g: CanvasRenderingContext2D, strokes: readonly Stroke[], 
 }
 
 export interface AnnotateApi {
-  toggle(): void;
-  exit(): boolean;
-  drawOnto(target: CanvasRenderingContext2D, width: number, height: number): void;
+  toggle: () => void;
+  exit: () => boolean;
+  drawOnto: (target: CanvasRenderingContext2D, width: number, height: number) => void;
 }
 
 export function initAnnotate(ctx: PlayerContext, { showUI }: { showUI: () => void }): AnnotateApi {
   const { video, player } = ctx;
-  const canvas = $<HTMLCanvasElement>('#drawCanvas');
+  const canvas = $as('#drawCanvas', HTMLCanvasElement);
   const view = $('#view');
   const toolbar = $('#drawToolbar');
   const colorsBox = $('#drawColors');
-  const sizeInput = $<HTMLInputElement>('#drawSize');
+  const sizeInput = $as('#drawSize', HTMLInputElement);
   const drawButtons = [$('#btnDraw'), $('#actDraw')];
   const context2d = canvas.getContext('2d');
   if (!context2d) throw new Error('Lumen: 2D canvas unavailable');
