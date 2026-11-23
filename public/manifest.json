@@ -4,9 +4,19 @@
   "version": "1.0.0",
   "description": "A minimalist, modern video player for your video files.",
   "minimum_chrome_version": "116",
-  "permissions": ["webNavigation", "storage"],
-  "host_permissions": ["file:///*"],
-  "background": { "service_worker": "background.js" },
+  "permissions": [
+    "webNavigation",
+    "storage"
+  ],
+  "host_permissions": [
+    "file:///*"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
     "default_title": "Lumen",
     "default_popup": "popup/popup.html",
