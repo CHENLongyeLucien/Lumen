@@ -17,3 +17,8 @@ desktop.ini
 # Logs and temporary files
 *.log
 *.tmp
+
+# Dependencies, build output, test coverage
+node_modules/
+dist/
+coverage/
