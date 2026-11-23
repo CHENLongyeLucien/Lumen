@@ -77,7 +77,7 @@ export function initSettings(
   function renderImageControls(): void {
     $('#rotateValue').textContent = `${String(image.rotation % 360)}°`;
     $('#mirrorValue').textContent = image.mirror ? 'On' : 'Off';
-    $('[data-action="mirror"]', menu).setAttribute('aria-checked', String(image.mirror));
+    $('[data-action="mirror"]', menu).setAttribute('aria-pressed', String(image.mirror));
     for (const slider of menu.querySelectorAll<HTMLInputElement>('input[data-filter]')) {
       const name = slider.dataset.filter;
       if (!isFilterName(name)) continue;
@@ -150,7 +150,9 @@ export function initSettings(
 
   function closeInfo(): boolean {
     if (panel.hidden) return false;
+    const hadFocus = panel.contains(document.activeElement);
     panel.hidden = true;
+    if (hadFocus) $('#btnSettings').focus({ preventScroll: true }); // back to where it was opened from
     return true;
   }
 

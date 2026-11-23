@@ -24,7 +24,7 @@ export function initSpeed(ctx: PlayerContext): SpeedApi {
     const option = document.createElement('button');
     option.type = 'button';
     option.className = 'menu-item';
-    option.setAttribute('role', 'menuitemradio');
+    option.setAttribute('role', 'radio');
     option.dataset.rate = String(rate);
     option.textContent = formatRate(rate);
     option.addEventListener('click', () => {

@@ -6,7 +6,16 @@ import type { PlayerContext } from './context';
 import { isTool, renderStrokes, type Point, type Rect, type Stroke, type Tool } from './strokes';
 import { $, $as, clamp, showToast } from './utils';
 
-const COLORS = ['#ff4d4f', '#ffb454', '#ffe066', '#34d399', '#4c9aff', '#a78bfa', '#ffffff', '#111111'];
+const COLORS: readonly { value: string; name: string }[] = [
+  { value: '#ff4d4f', name: 'Red' },
+  { value: '#ffb454', name: 'Orange' },
+  { value: '#ffe066', name: 'Yellow' },
+  { value: '#34d399', name: 'Green' },
+  { value: '#4c9aff', name: 'Blue' },
+  { value: '#a78bfa', name: 'Purple' },
+  { value: '#ffffff', name: 'White' },
+  { value: '#111111', name: 'Black' },
+];
 
 export interface AnnotateApi {
   toggle: () => void;
@@ -30,7 +39,7 @@ export function initAnnotate(ctx: PlayerContext, { showUI }: { showUI: () => voi
   const state: { active: boolean; tool: Tool; color: string; size: number } = {
     active: false,
     tool: 'pen',
-    color: COLORS[0] ?? '#ff4d4f',
+    color: COLORS[0]?.value ?? '#ff4d4f',
     size: 4,
   };
   let current: Stroke | null = null;
@@ -112,14 +121,15 @@ export function initAnnotate(ctx: PlayerContext, { showUI }: { showUI: () => voi
     sizeInput.style.setProperty('--fill', `${String(((state.size - 1) / 23) * 100)}%`);
   }
 
-  for (const color of COLORS) {
+  for (const { value: color, name } of COLORS) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'draw-color';
     btn.dataset.color = color;
     btn.style.setProperty('--swatch', color);
     btn.setAttribute('role', 'radio');
-    btn.setAttribute('aria-label', `Color ${color}`);
+    btn.setAttribute('aria-label', name);
+    btn.title = name;
     btn.addEventListener('click', () => {
       state.color = color;
       if (state.tool === 'eraser') state.tool = 'pen';

@@ -21,13 +21,13 @@
       <span>Lumen</span>
     </div>
     <div class="header-actions">
-      <button id="btnHeaderOpen" class="pill-btn" type="button" data-icon="folder">
+      <button id="btnHeaderOpen" class="pill-btn" type="button" data-icon="folder" aria-label="Open a file">
         <span class="label">Open a file</span></button>
       <button id="btnThemeToggle" class="icon-btn" type="button" aria-label="Switch theme"></button>
       <div class="menu-anchor">
-        <button id="btnAppearance" class="icon-btn" type="button" data-icon="palette" aria-haspopup="menu"
+        <button id="btnAppearance" class="icon-btn" type="button" data-icon="palette" aria-haspopup="dialog"
                 aria-expanded="false" aria-controls="appearanceMenu" aria-label="Appearance" title="Appearance"></button>
-        <div id="appearanceMenu" class="menu page-menu" role="menu" aria-label="Appearance" hidden>
+        <div id="appearanceMenu" class="menu page-menu" role="dialog" aria-label="Appearance" hidden>
           <div class="menu-title">Theme</div>
           <div class="segmented" role="radiogroup" aria-label="Theme">
             <button type="button" role="radio" data-theme-choice="light">Light</button>
@@ -49,7 +49,7 @@
 
         <div id="stage" class="stage">
           <div id="view" class="view">
-            <video id="video" preload="metadata" playsinline></video>
+            <video id="video" preload="metadata" playsinline aria-label="Video"></video>
             <canvas id="drawCanvas" class="draw-canvas" aria-label="Drawing layer"></canvas>
           </div>
         </div>
@@ -141,11 +141,11 @@
               </div>
 
               <div class="menu-anchor">
-                <button id="btnSpeed" class="btn btn-text" type="button" aria-haspopup="menu"
+                <button id="btnSpeed" class="btn btn-text" type="button" aria-haspopup="dialog"
                         aria-expanded="false" aria-controls="speedMenu" title="Playback speed (&lt; / &gt;)">1x</button>
-                <div id="speedMenu" class="menu speed-menu" role="menu" aria-label="Playback speed" hidden>
+                <div id="speedMenu" class="menu speed-menu" role="dialog" aria-label="Playback speed" hidden>
                   <div class="menu-title">Speed</div>
-                  <div id="speedPresets" class="speed-grid"></div>
+                  <div id="speedPresets" class="speed-grid" role="radiogroup" aria-label="Preset speeds"></div>
                   <label class="speed-custom">
                     <span>Custom</span>
                     <input id="speedInput" type="number" min="0.1" max="16" step="0.05" inputmode="decimal"
@@ -156,9 +156,9 @@
               </div>
 
               <div class="menu-anchor">
-                <button id="btnSettings" class="btn" type="button" data-icon="settings" aria-haspopup="menu"
+                <button id="btnSettings" class="btn" type="button" data-icon="settings" aria-haspopup="dialog"
                         aria-expanded="false" aria-controls="settingsMenu" aria-label="Settings" title="Settings"></button>
-                <div id="settingsMenu" class="menu settings-menu" role="menu" aria-label="Settings" hidden>
+                <div id="settingsMenu" class="menu settings-menu" role="dialog" aria-label="Settings" hidden>
                   <button class="menu-item" type="button" role="menuitem" data-action="screenshot" data-icon="camera">Screenshot</button>
                   <button class="menu-item" type="button" role="menuitem" data-action="info" data-icon="info">Video info</button>
                   <button class="menu-item" type="button" role="menuitem" data-action="zoom" data-icon="zoomIn">
@@ -167,7 +167,7 @@
                   <div class="menu-title">Image</div>
                   <button class="menu-item" type="button" role="menuitem" data-action="rotate" data-icon="rotate">
                     Rotate <span id="rotateValue" class="menu-value">0°</span></button>
-                  <button class="menu-item" type="button" role="menuitemcheckbox" aria-checked="false"
+                  <button class="menu-item" type="button" aria-pressed="false"
                           data-action="mirror" data-icon="mirror">
                     Mirror <span id="mirrorValue" class="menu-value">Off</span></button>
                   <label class="menu-slider">
@@ -206,8 +206,8 @@
         </section>
 
         <!-- Empty state / error state -->
-        <section id="dropzone" class="dropzone">
-          <div id="dropCard" class="drop-card">
+        <section id="dropzone" class="dropzone" aria-label="Open a video">
+          <div id="dropCard" class="drop-card" aria-live="polite">
             <div class="drop-icon" data-icon="film"></div>
             <h1 id="dropTitle">Drop a video here</h1>
             <p id="dropMessage">or open one from your computer.</p>
@@ -228,15 +228,15 @@
         <div class="details-bar">
           <div id="videoMeta" class="meta"></div>
           <div class="actions">
-            <button id="actDraw" class="pill-btn" type="button" data-icon="pen" aria-pressed="false">
+            <button id="actDraw" class="pill-btn" type="button" data-icon="pen" aria-pressed="false" aria-label="Draw (D)">
               <span class="label">Draw</span></button>
-            <button id="actZoom" class="pill-btn" type="button" data-icon="zoomIn">
+            <button id="actZoom" class="pill-btn" type="button" data-icon="zoomIn" aria-label="Zoom in (+)">
               <span class="label">Zoom</span></button>
-            <button id="actScreenshot" class="pill-btn" type="button" data-icon="camera">
+            <button id="actScreenshot" class="pill-btn" type="button" data-icon="camera" aria-label="Screenshot">
               <span class="label">Screenshot</span></button>
-            <button id="actSubtitles" class="pill-btn" type="button" data-icon="subtitles">
+            <button id="actSubtitles" class="pill-btn" type="button" data-icon="subtitles" aria-label="Subtitles (C)">
               <span class="label">Subtitles</span></button>
-            <button id="actTheater" class="pill-btn" type="button" data-icon="theater" aria-pressed="false">
+            <button id="actTheater" class="pill-btn" type="button" data-icon="theater" aria-pressed="false" aria-label="Theater mode (T)">
               <span class="label">Theater</span></button>
           </div>
         </div>

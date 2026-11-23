@@ -65,6 +65,33 @@ export const anyMenuOpen = (): boolean => openMenus.size > 0;
 /** True right after a menu was closed by clicking outside it (so that click is "consumed"). */
 export const wasMenuJustClosed = (): boolean => performance.now() - lastOutsideCloseAt < 400;
 
+/** Buttons and inputs a user can reach inside a popover, in DOM order. */
+function focusableItems(menu: HTMLElement): HTMLElement[] {
+  return [...menu.querySelectorAll<HTMLElement>('button, input')].filter(
+    (el) => !(el instanceof HTMLButtonElement && el.disabled) && el.offsetParent !== null,
+  );
+}
+
+/** Arrow keys / Home / End move focus between a popover's buttons (sliders keep their own arrows). */
+function handleMenuKeys(menu: HTMLElement, event: KeyboardEvent): void {
+  if (!(event.target instanceof HTMLButtonElement)) return;
+  const items = focusableItems(menu);
+  const index = items.indexOf(event.target);
+  const moves: Partial<Record<string, number>> = {
+    ArrowDown: index + 1,
+    ArrowRight: index + 1,
+    ArrowUp: index - 1,
+    ArrowLeft: index - 1,
+    Home: 0,
+    End: items.length - 1,
+  };
+  const next = moves[event.key];
+  if (next === undefined || !items.length) return;
+  event.preventDefault();
+  event.stopPropagation(); // keep the player's arrow shortcuts (seek, volume) out of the menu
+  items[(next + items.length) % items.length]?.focus();
+}
+
 export function setupMenu(
   button: HTMLElement,
   menu: HTMLElement,
@@ -89,9 +116,12 @@ export function setupMenu(
     },
     close() {
       if (menu.hidden) return;
+      // Give focus back to the trigger when it was inside the popover (Esc, item chosen).
+      const hadFocus = menu.contains(document.activeElement);
       menu.hidden = true;
       button.setAttribute('aria-expanded', 'false');
       openMenus.delete(api);
+      if (hadFocus) button.focus({ preventScroll: true });
       notifyMenuChange();
     },
     toggle() {
@@ -99,8 +129,15 @@ export function setupMenu(
       else api.open();
     },
   };
-  button.addEventListener('click', () => {
+  button.addEventListener('click', (event) => {
     api.toggle();
+    // Opened from the keyboard (Enter/Space give detail 0): move focus into the popover.
+    if (api.isOpen() && event.detail === 0 && !menu.contains(document.activeElement)) {
+      focusableItems(menu)[0]?.focus({ preventScroll: true });
+    }
+  });
+  menu.addEventListener('keydown', (event) => {
+    handleMenuKeys(menu, event);
   });
   return api;
 }
