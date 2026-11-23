@@ -2,51 +2,11 @@
 // collapsible description box. Also provides the rows of the info panel.
 
 import type { PlayerContext, VideoSource } from './context';
-import { $, extensionOf, formatBytes, formatTime } from './utils';
-
-const dateFormat = new Intl.DateTimeFormat('en', { dateStyle: 'medium' });
-const relativeFormat = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
-const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
-  ['year', 31536000],
-  ['month', 2592000],
-  ['week', 604800],
-  ['day', 86400],
-  ['hour', 3600],
-  ['minute', 60],
-];
+import { parseDirectoryListing, splitFileUrl, type FileStat } from './file-stat';
+import { extensionOf, formatBytes, formatDate, formatTime, qualityLabel, relativeTime, safeDecode } from './format';
+import { $ } from './utils';
 
 export type InfoRow = [label: string, value: string];
-
-interface FileStat {
-  size?: number;
-  modified?: number;
-}
-
-function relativeTime(ms: number): string {
-  const diff = (ms - Date.now()) / 1000;
-  for (const [unit, seconds] of UNITS) {
-    if (Math.abs(diff) >= seconds) return relativeFormat.format(Math.round(diff / seconds), unit);
-  }
-  return 'just now';
-}
-
-function qualityLabel(width: number, height: number): string {
-  const p = Math.min(width, height);
-  if (p >= 2160) return '4K';
-  if (p >= 1440) return '1440p';
-  if (p >= 1080) return '1080p';
-  if (p >= 720) return '720p';
-  if (p >= 480) return '480p';
-  return `${String(p)}p`;
-}
-
-const safeDecode = (text: string): string => {
-  try {
-    return decodeURIComponent(text);
-  } catch {
-    return text;
-  }
-};
 
 /** GET a URL as text with XMLHttpRequest (works for file:// in extensions with file access). */
 function xhrText(url: string, timeoutMs = 4000): Promise<string | null> {
@@ -68,28 +28,11 @@ function xhrText(url: string, timeoutMs = 4000): Promise<string | null> {
   });
 }
 
-/**
- * Date and size of a local file, read from Chrome's directory listing page,
- * which contains lines like: addRow("name","url",isDir,size,"size",modifiedSeconds,"date").
- */
+/** Date and size of a local file, read from Chrome's directory listing page. */
 async function statLocalFile(fileUrl: string): Promise<FileStat | null> {
-  const slash = fileUrl.lastIndexOf('/');
-  const html = await xhrText(fileUrl.slice(0, slash + 1));
-  if (!html) return null;
-  const wanted = safeDecode(fileUrl.slice(slash + 1));
-  const row = /addRow\(("(?:[^"\\]|\\.)*"),("(?:[^"\\]|\\.)*"),(\d+),(\d+),"(?:[^"\\]|\\.)*",(\d+),/g;
-  for (const match of html.matchAll(row)) {
-    try {
-      const name: unknown = JSON.parse(match[1] ?? '""');
-      const url: unknown = JSON.parse(match[2] ?? '""');
-      if (name === wanted || (typeof url === 'string' && safeDecode(url) === wanted)) {
-        return { size: Number(match[4]) || undefined, modified: Number(match[5]) * 1000 || undefined };
-      }
-    } catch {
-      /* malformed row: skip */
-    }
-  }
-  return null;
+  const { folderUrl, fileName } = splitFileUrl(fileUrl);
+  const html = await xhrText(folderUrl);
+  return html ? parseDirectoryListing(html, fileName) : null;
 }
 
 /** Last-Modified / Content-Length of a web video (only if the server allows it). */
@@ -150,7 +93,7 @@ export function initDetails(ctx: PlayerContext, { getFrameRate }: { getFrameRate
     const fps = getFrameRate();
     const rows: InfoRow[] = [['Name', source.name]];
     if (source.modified) {
-      rows.push([dateVerb(source), `${dateFormat.format(source.modified)} (${relativeTime(source.modified)})`]);
+      rows.push([dateVerb(source), `${formatDate(source.modified)} (${relativeTime(source.modified)})`]);
     }
     rows.push(
       ['Resolution', video.videoWidth ? `${String(video.videoWidth)} × ${String(video.videoHeight)}` : '—'],
@@ -171,7 +114,7 @@ export function initDetails(ctx: PlayerContext, { getFrameRate }: { getFrameRate
 
     const items: HTMLElement[] = [];
     if (source.modified) {
-      const span = textSpan(`${dateVerb(source)} ${dateFormat.format(source.modified)}`);
+      const span = textSpan(`${dateVerb(source)} ${formatDate(source.modified)}`);
       span.title = `${relativeTime(source.modified)} (file date)`;
       items.push(span);
     }

@@ -5,6 +5,7 @@ import { readSetting, writeSetting } from '../shared/storage';
 import { isVolumeSetting } from '../shared/types';
 import type { PlayerContext } from './context';
 import { icons, type IconName } from './icons';
+import { createAutoHide, debounce } from './timing';
 import { $, anyMenuOpen, clamp, formatTime, onMenuChange, showToast, wasMenuJustClosed } from './utils';
 
 const HIDE_DELAY_MS = 3000;
@@ -293,7 +294,10 @@ export function initControls(ctx: PlayerContext): ControlsApi {
     if (announce) showToast(video.muted ? 'Muted' : `Volume ${String(Math.round(video.volume * 100))}%`);
   }
 
-  let saveVolumeTimer = 0;
+  const saveVolume = debounce(() => {
+    void writeSetting('local', 'volume', { level: video.volume, muted: video.muted });
+  }, 300);
+
   function renderVolume(): void {
     const level = video.muted ? 0 : video.volume;
     if (video.volume > 0) lastAudibleVolume = video.volume;
@@ -305,10 +309,7 @@ export function initControls(ctx: PlayerContext): ControlsApi {
     const label = level === 0 ? 'Unmute (M)' : 'Mute (M)';
     btnMute.setAttribute('aria-label', label);
     btnMute.title = label;
-    window.clearTimeout(saveVolumeTimer);
-    saveVolumeTimer = window.setTimeout(() => {
-      void writeSetting('local', 'volume', { level: video.volume, muted: video.muted });
-    }, 300);
+    saveVolume();
   }
 
   btnMute.addEventListener('click', () => {
@@ -397,19 +398,16 @@ export function initControls(ctx: PlayerContext): ControlsApi {
 
   /* ---------- Auto-hide ---------- */
 
-  let hideTimer = 0;
   let pointerOverControls = false;
-
-  function showUI(): void {
-    player.classList.remove('ui-hidden');
-    window.clearTimeout(hideTimer);
-    hideTimer = window.setTimeout(hideUI, HIDE_DELAY_MS);
-  }
-
-  function hideUI(): void {
-    if (!ctx.source || video.paused || scrubbing || pointerOverControls || anyMenuOpen()) return;
-    player.classList.add('ui-hidden');
-  }
+  const autoHide = createAutoHide({
+    delay: HIDE_DELAY_MS,
+    canHide: () => Boolean(ctx.source) && !video.paused && !scrubbing && !pointerOverControls && !anyMenuOpen(),
+    onShow: () => player.classList.remove('ui-hidden'),
+    onHide: () => player.classList.add('ui-hidden'),
+  });
+  const showUI = (): void => {
+    autoHide.show();
+  };
 
   player.addEventListener('pointermove', (event) => {
     if (event.movementX === 0 && event.movementY === 0) return; // ignore synthetic moves
@@ -417,8 +415,7 @@ export function initControls(ctx: PlayerContext): ControlsApi {
   });
   player.addEventListener('pointerleave', () => {
     if (video.paused) return;
-    window.clearTimeout(hideTimer);
-    hideTimer = window.setTimeout(hideUI, 700);
+    autoHide.scheduleHide(700);
   });
   controls.addEventListener('pointerenter', () => {
     pointerOverControls = true;

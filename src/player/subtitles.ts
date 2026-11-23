@@ -1,44 +1,8 @@
 // External subtitles: loads .srt (converted to WebVTT) or .vtt files.
 
 import type { PlayerContext } from './context';
+import { decodeText, normalizeVtt, srtToVtt } from './subtitle-format';
 import { $, closestTarget, extensionOf, setupMenu, showToast } from './utils';
-
-/** Decodes subtitle bytes: UTF-16 (BOM), UTF-8, else Windows-1252 (common for old .srt). */
-function decodeText(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  if (bytes[0] === 0xff && bytes[1] === 0xfe) return new TextDecoder('utf-16le').decode(bytes);
-  if (bytes[0] === 0xfe && bytes[1] === 0xff) return new TextDecoder('utf-16be').decode(bytes);
-  try {
-    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-  } catch {
-    return new TextDecoder('windows-1252').decode(bytes);
-  }
-}
-
-const normalizeNewlines = (text: string): string => text.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
-
-/** Converts SubRip (.srt) text to WebVTT. */
-export function srtToVtt(srt: string): string {
-  const timestamp = /(\d+):(\d{1,2}):(\d{1,2})[,.](\d{1,3})/g;
-  const body = normalizeNewlines(srt)
-    .trim()
-    .split('\n')
-    .map((line) => {
-      if (!line.includes('-->')) return line.replace(/\{\\[^}]*\}/g, ''); // drop {\an8}-style tags
-      return line.replace(
-        timestamp,
-        (_match, h: string, m: string, s: string, ms: string) =>
-          `${h.padStart(2, '0')}:${m.padStart(2, '0')}:${s.padStart(2, '0')}.${ms.padEnd(3, '0')}`,
-      );
-    })
-    .join('\n');
-  return `WEBVTT\n\n${body}\n`;
-}
-
-function normalizeVtt(text: string): string {
-  const clean = normalizeNewlines(text);
-  return clean.startsWith('WEBVTT') ? clean : `WEBVTT\n\n${clean}`;
-}
 
 export interface SubtitlesApi {
   loadFile(file: File): Promise<void>;

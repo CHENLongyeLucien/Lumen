@@ -1,13 +1,8 @@
 // Playback speed: preset menu, free value (0.1x to 16x) and step up/down.
 
 import type { PlayerContext } from './context';
-import { $, clamp, setupMenu, showToast } from './utils';
-
-const PRESETS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4];
-const MIN_RATE = 0.1;
-const MAX_RATE = 16;
-
-export const formatRate = (rate: number): string => `${String(Number(rate.toFixed(2)))}x`;
+import { clampRate, formatRate, isSameRate, nextRate, parseRateInput, SPEED_PRESETS } from './speed-logic';
+import { $, setupMenu, showToast } from './utils';
 
 export interface SpeedApi {
   setSpeed(rate: number, options?: { announce?: boolean }): void;
@@ -25,7 +20,7 @@ export function initSpeed(ctx: PlayerContext): SpeedApi {
     onOpen: () => menu.querySelector<HTMLElement>('[aria-checked="true"]')?.focus({ preventScroll: true }),
   });
 
-  for (const rate of PRESETS) {
+  for (const rate of SPEED_PRESETS) {
     const option = document.createElement('button');
     option.type = 'button';
     option.className = 'menu-item';
@@ -41,22 +36,15 @@ export function initSpeed(ctx: PlayerContext): SpeedApi {
   }
 
   function setSpeed(rate: number, { announce = false }: { announce?: boolean } = {}): void {
-    if (!Number.isFinite(rate)) return;
-    const value = clamp(Math.round(rate * 100) / 100, MIN_RATE, MAX_RATE);
+    const value = clampRate(rate);
+    if (value === null) return;
     video.defaultPlaybackRate = value; // survives loading a new source
     video.playbackRate = value;
     if (announce) showToast(`Speed ${formatRate(value)}`);
   }
 
   function stepSpeed(direction: number): void {
-    const rate = video.playbackRate;
-    let next: number;
-    if (direction > 0) {
-      next = PRESETS.find((p) => p > rate + 1e-6) ?? Math.min(MAX_RATE, Math.floor(rate) + 1);
-    } else {
-      next = [...PRESETS].reverse().find((p) => p < rate - 1e-6) ?? MIN_RATE;
-    }
-    setSpeed(next, { announce: true });
+    setSpeed(nextRate(video.playbackRate, direction), { announce: true });
   }
 
   function render(): void {
@@ -64,14 +52,14 @@ export function initSpeed(ctx: PlayerContext): SpeedApi {
     button.textContent = formatRate(rate);
     button.setAttribute('aria-label', `Playback speed: ${formatRate(rate)}`);
     for (const option of presets.querySelectorAll<HTMLElement>('[data-rate]')) {
-      option.setAttribute('aria-checked', String(Math.abs(Number(option.dataset.rate) - rate) < 1e-6));
+      option.setAttribute('aria-checked', String(isSameRate(Number(option.dataset.rate), rate)));
     }
     if (document.activeElement !== input) input.value = String(Number(rate.toFixed(2)));
   }
 
   input.addEventListener('change', () => {
-    const value = Number(input.value.replace(',', '.'));
-    if (Number.isFinite(value) && value > 0) setSpeed(value);
+    const value = parseRateInput(input.value);
+    if (value !== null) setSpeed(value);
     render();
   });
   input.addEventListener('keydown', (event) => {

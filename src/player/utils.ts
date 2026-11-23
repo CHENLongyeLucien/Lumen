@@ -15,44 +15,7 @@ export function closestTarget<T extends HTMLElement = HTMLElement>(
   return target instanceof Element ? target.closest<T>(selector) : null;
 }
 
-export const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
-
-/** Formats seconds as mm:ss, or h:mm:ss when needed (or forced). */
-export function formatTime(seconds: number, forceHours = false): string {
-  const total = Number.isFinite(seconds) && seconds > 0 ? Math.floor(seconds) : 0;
-  const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  const s = String(total % 60).padStart(2, '0');
-  if (h > 0 || forceHours) return `${h}:${String(m).padStart(2, '0')}:${s}`;
-  return `${String(m).padStart(2, '0')}:${s}`;
-}
-
-export function formatBytes(bytes: number): string {
-  if (!Number.isFinite(bytes) || bytes <= 0) return '—';
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
-  return `${(bytes / 1024 ** i).toFixed(i === 0 ? 0 : 1)} ${units[i] ?? 'B'}`;
-}
-
-/** Decoded file name (last path segment) of a URL. */
-export function fileNameFromUrl(rawUrl: string): string {
-  try {
-    const segment = new URL(rawUrl).pathname.split('/').filter(Boolean).pop() ?? '';
-    try {
-      return decodeURIComponent(segment) || 'Video';
-    } catch {
-      return segment || 'Video';
-    }
-  } catch {
-    return 'Video';
-  }
-}
-
-/** Lower-case extension without the dot ("" when none). */
-export function extensionOf(name: string): string {
-  const match = /\.([a-z0-9]+)$/i.exec(name);
-  return match?.[1]?.toLowerCase() ?? '';
-}
+export { clamp, extensionOf, fileNameFromUrl, formatBytes, formatTime } from './format';
 
 /* ---------- Toast ---------- */
 

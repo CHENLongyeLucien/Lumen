@@ -3,6 +3,7 @@
 
 import { SOURCE_PARAM, WELCOME_PAGE } from '../shared/types';
 import type { PlayerContext, VideoSource } from './context';
+import { errorCategory, errorMessage, needsExistenceCheck, type ErrorMessage } from './errors';
 import { $, extensionOf, fileNameFromUrl, showToast } from './utils';
 
 const VIDEO_EXTENSIONS = new Set([
@@ -11,19 +12,9 @@ const VIDEO_EXTENSIONS = new Set([
 ]);
 const AUDIO_EXTENSIONS = new Set(['ogg', 'm4a', 'mp3', 'wav', 'flac', 'opus']);
 const SUBTITLE_EXTENSIONS = new Set(['srt', 'vtt']);
-const RISKY_FORMATS: Partial<Record<string, string>> = {
-  mkv: 'MKV', avi: 'AVI', wmv: 'WMV', flv: 'FLV', mpg: 'MPEG', mpeg: 'MPEG',
-  hevc: 'H.265', ts: 'MPEG-TS', m2ts: 'MPEG-TS', mts: 'MPEG-TS',
-};
-const CODEC_HINT =
-  'Chrome plays MP4 (H.264/AAC) and WebM (VP8/VP9/AV1) everywhere; MKV, AVI and H.265 depend on your machine.';
-
-interface ErrorMessage {
+interface DropzoneContent {
   title: string;
   message: string;
-}
-
-interface DropzoneContent extends ErrorMessage {
   detail?: string;
   error?: boolean;
 }
@@ -67,50 +58,10 @@ async function hasFileAccess(): Promise<boolean> {
   }
 }
 
+/** Readable message for the current media error (checks local files exist when it matters). */
 async function describeError(code: number, source: VideoSource): Promise<ErrorMessage> {
-  switch (code) {
-    case MediaError.MEDIA_ERR_ABORTED:
-      return {
-        title: 'Loading was interrupted',
-        message: 'The video stopped loading before it could play. Try opening it again.',
-      };
-    case MediaError.MEDIA_ERR_NETWORK:
-      return source.kind === 'Web link'
-        ? {
-            title: 'Network error',
-            message: 'The connection failed while loading the video. Check your connection or the link, then reload the page.',
-          }
-        : {
-            title: 'The file could not be read',
-            message: 'It may have been moved or deleted, or it is on a drive that is no longer connected.',
-          };
-    case MediaError.MEDIA_ERR_DECODE:
-      return {
-        title: 'This file seems corrupted',
-        message:
-          'Chrome started reading the video but could not decode it. The file may be damaged or incomplete (for example, an unfinished download).',
-      };
-    default: {
-      if (source.kind === 'Local file' && (await fileExists(source.url)) === false) {
-        return {
-          title: 'File not found or inaccessible',
-          message:
-            'Lumen could not read this file. Check that it still exists, and that "Allow access to file URLs" is enabled for Lumen in chrome://extensions.',
-        };
-      }
-      if (source.kind === 'Web link') {
-        return {
-          title: "Can't play this link",
-          message: `The link may be broken, require a login, refuse to be played from another page, or use a format Chrome can't decode. ${CODEC_HINT}`,
-        };
-      }
-      const format = RISKY_FORMATS[source.ext];
-      return {
-        title: 'Unsupported format',
-        message: `${format ? `${format} files often use codecs Chrome can't decode.` : 'Chrome cannot decode this video.'} ${CODEC_HINT}`,
-      };
-    }
-  }
+  const exists = needsExistenceCheck(code, source.kind) ? await fileExists(source.url) : null;
+  return errorMessage(errorCategory(code, source.kind, exists), source.ext);
 }
 
 export interface SourceApi {

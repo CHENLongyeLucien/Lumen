@@ -4,11 +4,10 @@ import { readSetting, writeSetting } from '../shared/storage';
 import { isSavedPositions } from '../shared/types';
 import type { SavedPositions } from '../shared/types';
 import type { PlayerContext } from './context';
+import { isRememberable, positionToSave, shouldRestore, updatePositions } from './resume';
 import { $, clamp, formatTime, showToast } from './utils';
 
-const MAX_POSITIONS = 200;
 const SAVE_INTERVAL_MS = 5000;
-const MIN_DURATION_TO_REMEMBER = 30; // seconds; short clips always start at 0
 const DEFAULT_FRAME = 1 / 30;
 
 export interface ExtrasApi {
@@ -185,32 +184,17 @@ export function initExtras(ctx: PlayerContext, { showUI }: { showUI: () => void 
     writeChain = writeChain
       .then(async () => {
         const all = await readPositions();
-        if (time === null) {
-          delete all[key];
-        } else {
-          all[key] = { time, at: Date.now() };
-        }
-        const keys = Object.keys(all);
-        if (keys.length > MAX_POSITIONS) {
-          keys
-            .sort((a, b) => (all[a]?.at ?? 0) - (all[b]?.at ?? 0))
-            .slice(0, keys.length - MAX_POSITIONS)
-            .forEach((k) => {
-              delete all[k];
-            });
-        }
-        await writeSetting('local', 'positions', all);
+        await writeSetting('local', 'positions', updatePositions(all, key, time, Date.now()));
       })
       .catch(() => undefined);
   }
 
   function savePosition(force = false): void {
-    if (!canSave || !positionKey || !hasDuration() || video.duration < MIN_DURATION_TO_REMEMBER) return;
+    if (!canSave || !positionKey || !isRememberable(video.duration)) return;
     const now = Date.now();
     if (!force && now - lastSaveAt < SAVE_INTERVAL_MS) return;
     lastSaveAt = now;
-    const t = video.currentTime;
-    writePosition(positionKey, t > 5 && t < video.duration - 5 ? t : null);
+    writePosition(positionKey, positionToSave(video.currentTime, video.duration));
   }
 
   ctx.onSourceChange((source) => {
@@ -231,8 +215,7 @@ export function initExtras(ctx: PlayerContext, { showUI }: { showUI: () => void 
     if (!pending) return;
     const time = await pending;
     canSave = true;
-    if (time === null || !hasDuration() || video.duration < MIN_DURATION_TO_REMEMBER) return;
-    if (time < 5 || time > video.duration - 5) return;
+    if (!shouldRestore(time, video.duration)) return;
     video.currentTime = time;
     showToast(`Resumed at ${fmt(time)} · press 0 to start over`, 3500);
   }
