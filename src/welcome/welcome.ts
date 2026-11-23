@@ -1,15 +1,23 @@
 // Welcome / help page: explains how to enable "Allow access to file URLs".
 
-const status = document.getElementById('status');
-const btnSettings = document.getElementById('btnSettings');
-const btnRetry = document.getElementById('btnRetry');
-const btnPlayer = document.getElementById('btnPlayer');
+import { PLAYER_PAGE, SOURCE_PARAM } from '../shared/types';
 
-const src = new URLSearchParams(location.search).get('src');
-const playerUrl = chrome.runtime.getURL('player/player.html');
+function byId<T extends HTMLElement>(id: string): T {
+  const el = document.getElementById(id);
+  if (!el) throw new Error(`Missing element #${id}`);
+  return el as T;
+}
 
-async function refreshStatus() {
-  let allowed;
+const status = byId('status');
+const btnSettings = byId<HTMLButtonElement>('btnSettings');
+const btnRetry = byId<HTMLButtonElement>('btnRetry');
+const btnPlayer = byId<HTMLButtonElement>('btnPlayer');
+
+const src = new URLSearchParams(location.search).get(SOURCE_PARAM);
+const playerUrl = chrome.runtime.getURL(PLAYER_PAGE);
+
+async function refreshStatus(): Promise<void> {
+  let allowed: boolean;
   try {
     allowed = await chrome.extension.isAllowedFileSchemeAccess();
   } catch {
@@ -21,15 +29,16 @@ async function refreshStatus() {
 }
 
 btnSettings.addEventListener('click', () => {
-  chrome.tabs.create({ url: `chrome://extensions/?id=${chrome.runtime.id}` });
+  void chrome.tabs.create({ url: `chrome://extensions/?id=${chrome.runtime.id}` });
 });
 btnRetry.addEventListener('click', () => {
-  location.href = `${playerUrl}?src=${encodeURIComponent(src)}`;
+  if (src) location.href = `${playerUrl}?${SOURCE_PARAM}=${encodeURIComponent(src)}`;
 });
 btnPlayer.addEventListener('click', () => {
   location.href = playerUrl;
 });
 
-window.addEventListener('focus', refreshStatus);
-document.addEventListener('visibilitychange', refreshStatus);
-refreshStatus();
+const refresh = (): void => void refreshStatus();
+window.addEventListener('focus', refresh);
+document.addEventListener('visibilitychange', refresh);
+refresh();

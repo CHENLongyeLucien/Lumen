@@ -1,31 +1,24 @@
 // Entry point: creates the shared context and wires all player modules.
 
-import { $, closeAllMenus } from './utils.js';
-import { injectIcons } from './icons.js';
-import { initAppearance } from './appearance.js';
-import { initLayout } from './layout.js';
-import { initControls } from './controls.js';
-import { initSpeed } from './speed.js';
-import { initShortcuts } from './shortcuts.js';
-import { initSubtitles } from './subtitles.js';
-import { initExtras } from './extras.js';
-import { initAnnotate } from './annotate.js';
-import { initZoom } from './zoom.js';
-import { initDetails } from './details.js';
-import { initSettings } from './settings.js';
-import { initSource } from './source.js';
+import { initAnnotate } from './annotate';
+import { initAppearance } from './appearance';
+import { createContext } from './context';
+import { initControls } from './controls';
+import { initDetails } from './details';
+import { initExtras } from './extras';
+import { injectIcons } from './icons';
+import { initLayout } from './layout';
+import { initSettings } from './settings';
+import { initShortcuts } from './shortcuts';
+import { initSource } from './source';
+import { initSpeed } from './speed';
+import { initSubtitles } from './subtitles';
+import { $, closeAllMenus } from './utils';
+import { initZoom } from './zoom';
 
 injectIcons();
 
-/** Shared state passed to every module. */
-const ctx = {
-  app: $('#app'),
-  player: $('#player'), // the element that goes fullscreen
-  video: $('#video'),
-  source: null, // { url, name, key, type, size?, modified?, kind, ext }
-  imageFilter: 'none',
-  events: new EventTarget(), // emits "sourcechange"
-};
+const ctx = createContext($('#app'), $('#player'), $<HTMLVideoElement>('#video'));
 
 initAppearance();
 const layout = initLayout(ctx);
@@ -42,9 +35,15 @@ const settings = initSettings(ctx, {
   zoomIn: zoom.zoomIn,
 });
 ctx.drawAnnotations = annotate.drawOnto;
-$('#actScreenshot').addEventListener('click', extras.screenshot);
+$('#actScreenshot').addEventListener('click', () => {
+  void extras.screenshot();
+});
 
-const source = initSource(ctx, { onSubtitleFile: subtitles.loadFile });
+const source = initSource(ctx, {
+  onSubtitleFile: (file) => {
+    void subtitles.loadFile(file);
+  },
+});
 
 initShortcuts({
   hasSource: source.isShowingVideo,
@@ -54,10 +53,14 @@ initShortcuts({
   changeVolume: controls.changeVolume,
   toggleMute: controls.toggleMute,
   toggleFullscreen: controls.toggleFullscreen,
-  togglePip: controls.togglePip,
+  togglePip: () => {
+    void controls.togglePip();
+  },
   toggleTheater: layout.toggleTheater,
   toggleDraw: annotate.toggle,
-  toggleSubtitles: subtitles.toggle,
+  toggleSubtitles: () => {
+    subtitles.toggle();
+  },
   zoomIn: zoom.zoomIn,
   zoomOut: zoom.zoomOut,
   stepSpeed: speed.stepSpeed,

@@ -1,21 +1,25 @@
 // Layout: default view (video + details) or theater mode (full-width video).
 
-import { $, showToast } from './utils.js';
-import { icons } from './icons.js';
+import { THEATER_KEY } from '../shared/types';
+import type { PlayerContext } from './context';
+import { icons } from './icons';
+import { $, showToast } from './utils';
 
-const STORAGE_KEY = 'lumen.theater';
+export interface LayoutApi {
+  toggleTheater(): void;
+}
 
-export function initLayout(ctx) {
-  const btnTheater = $('#btnTheater');
+export function initLayout(ctx: PlayerContext): LayoutApi {
+  const btnTheater = $<HTMLButtonElement>('#btnTheater');
   const chip = $('#actTheater');
-  let theater = false;
+  let theater: boolean;
   try {
-    theater = localStorage.getItem(STORAGE_KEY) === '1';
+    theater = localStorage.getItem(THEATER_KEY) === '1';
   } catch {
     theater = false;
   }
 
-  function setTheater(on) {
+  function setTheater(on: boolean): void {
     theater = on;
     ctx.app.classList.toggle('layout-theater', on);
     btnTheater.innerHTML = on ? icons.defaultView : icons.theater;
@@ -24,13 +28,13 @@ export function initLayout(ctx) {
     btnTheater.title = label;
     chip.setAttribute('aria-pressed', String(on));
     try {
-      localStorage.setItem(STORAGE_KEY, on ? '1' : '0');
+      localStorage.setItem(THEATER_KEY, on ? '1' : '0');
     } catch {
       /* not critical */
     }
   }
 
-  function toggleTheater() {
+  function toggleTheater(): void {
     if (document.fullscreenElement) {
       showToast('Exit fullscreen to change the layout');
       return;
@@ -41,7 +45,9 @@ export function initLayout(ctx) {
 
   btnTheater.addEventListener('click', toggleTheater);
   chip.addEventListener('click', toggleTheater);
-  $('#btnHeaderOpen').addEventListener('click', () => $('#fileInput').click());
+  $('#btnHeaderOpen').addEventListener('click', () => {
+    $('#fileInput').click();
+  });
   setTheater(theater);
 
   return { toggleTheater };

@@ -1,14 +1,22 @@
 // Popup: enable/disable the redirect, show local file access status.
 
-const toggle = document.getElementById('toggleRedirect');
-const fileStatus = document.getElementById('fileStatus');
-const btnFix = document.getElementById('btnFix');
-const btnOpenPlayer = document.getElementById('btnOpenPlayer');
+import { readSetting, writeSetting } from '../shared/storage';
+import { isBoolean, PLAYER_PAGE, SYNC_DEFAULTS, WELCOME_PAGE } from '../shared/types';
 
-const { redirectEnabled } = await chrome.storage.sync.get({ redirectEnabled: true });
-toggle.checked = redirectEnabled !== false;
+function byId<T extends HTMLElement>(id: string): T {
+  const el = document.getElementById(id);
+  if (!el) throw new Error(`Missing element #${id}`);
+  return el as T;
+}
+
+const toggle = byId<HTMLInputElement>('toggleRedirect');
+const fileStatus = byId('fileStatus');
+const btnFix = byId<HTMLButtonElement>('btnFix');
+const btnOpenPlayer = byId<HTMLButtonElement>('btnOpenPlayer');
+
+toggle.checked = await readSetting('sync', 'redirectEnabled', SYNC_DEFAULTS.redirectEnabled, isBoolean);
 toggle.addEventListener('change', () => {
-  chrome.storage.sync.set({ redirectEnabled: toggle.checked });
+  void writeSetting('sync', 'redirectEnabled', toggle.checked);
 });
 
 const allowed = await chrome.extension.isAllowedFileSchemeAccess();
@@ -17,11 +25,11 @@ fileStatus.classList.add(allowed ? 'ok' : 'warn');
 btnFix.hidden = allowed;
 
 btnFix.addEventListener('click', () => {
-  chrome.tabs.create({ url: chrome.runtime.getURL('welcome/welcome.html') });
+  void chrome.tabs.create({ url: chrome.runtime.getURL(WELCOME_PAGE) });
   window.close();
 });
 
 btnOpenPlayer.addEventListener('click', () => {
-  chrome.tabs.create({ url: chrome.runtime.getURL('player/player.html') });
+  void chrome.tabs.create({ url: chrome.runtime.getURL(PLAYER_PAGE) });
   window.close();
 });

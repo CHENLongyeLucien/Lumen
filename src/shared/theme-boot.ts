@@ -1,17 +1,15 @@
 // Applies the saved theme and accent before the page paints (no flash).
-// Classic (non-module) script, loaded in <head> by every Lumen page.
-(function applyAppearance() {
-  var root = document.documentElement;
-  var saved;
-  try {
-    saved = JSON.parse(localStorage.getItem('lumen.appearance') || '{}') || {};
-  } catch {
-    saved = {};
-  }
-  var theme = saved.theme || 'dark';
-  if (theme === 'system') {
-    theme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
-  }
-  root.dataset.theme = theme;
-  root.dataset.accent = saved.accent || 'amber';
-})();
+// Bundled as a classic (non-module) script, loaded in <head> by every Lumen page.
+
+import { parseAppearance, resolveTheme } from './appearance-state';
+import { APPEARANCE_KEY, DEFAULT_APPEARANCE } from './types';
+
+const root = document.documentElement;
+let appearance = DEFAULT_APPEARANCE;
+try {
+  appearance = parseAppearance(localStorage.getItem(APPEARANCE_KEY));
+} catch {
+  // localStorage unavailable: keep the defaults
+}
+root.dataset.theme = resolveTheme(appearance.theme, window.matchMedia('(prefers-color-scheme: light)').matches);
+root.dataset.accent = appearance.accent;

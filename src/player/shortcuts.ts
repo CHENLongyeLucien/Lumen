@@ -1,19 +1,38 @@
-// Keyboard shortcuts (README section 5.3, plus "," / "." frame by frame).
+// Keyboard shortcuts (README table, plus "," / "." frame by frame).
+
+export interface ShortcutActions {
+  hasSource(): boolean;
+  escape(): boolean;
+  togglePlay(options: { flash: boolean }): void;
+  seekBy(delta: number): void;
+  seekToFraction(fraction: number): void;
+  changeVolume(delta: number): void;
+  toggleMute(options: { announce: boolean }): void;
+  toggleFullscreen(): void;
+  togglePip(): void;
+  toggleTheater(): void;
+  toggleDraw(): void;
+  toggleSubtitles(): void;
+  zoomIn(): void;
+  zoomOut(): void;
+  stepSpeed(direction: number): void;
+  stepFrame(direction: number): void;
+}
 
 /** True when the key press is meant for a text field. */
-function isEditable(el) {
-  if (!el || el === document.body) return false;
+function isEditable(el: EventTarget | null): boolean {
+  if (!(el instanceof HTMLElement) || el === document.body) return false;
   if (el.isContentEditable) return true;
-  if (el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') return true;
-  if (el.tagName === 'INPUT') return !['range', 'checkbox', 'radio', 'button'].includes(el.type);
+  if (el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement) return true;
+  if (el instanceof HTMLInputElement) return !['range', 'checkbox', 'radio', 'button'].includes(el.type);
   return false;
 }
 
-export function initShortcuts(api) {
+export function initShortcuts(api: ShortcutActions): void {
   document.addEventListener('keydown', (event) => {
     if (event.ctrlKey || event.metaKey || event.altKey) return;
     if (isEditable(event.target)) {
-      if (event.key === 'Escape') event.target.blur();
+      if (event.key === 'Escape' && event.target instanceof HTMLElement) event.target.blur();
       return;
     }
     if (handleKey(event, api)) {
@@ -28,14 +47,14 @@ export function initShortcuts(api) {
   });
 }
 
-function handleKey(event, api) {
+function handleKey(event: KeyboardEvent, api: ShortcutActions): boolean {
   if (event.key === 'Escape') return api.escape();
   if (!api.hasSource()) return false;
 
   // 0-9: jump to 0%…90%. Uses the physical key so it also works on AZERTY.
-  const digit = /^(?:Digit|Numpad)(\d)$/.exec(event.code);
-  if (digit && (event.code.startsWith('Digit') || /^\d$/.test(event.key))) {
-    api.seekToFraction(Number(digit[1]) / 10);
+  const digit = /^(?:Digit|Numpad)(\d)$/.exec(event.code)?.[1];
+  if (digit !== undefined && (event.code.startsWith('Digit') || /^\d$/.test(event.key))) {
+    api.seekToFraction(Number(digit) / 10);
     return true;
   }
 
@@ -47,12 +66,24 @@ function handleKey(event, api) {
     case 'k':
       if (once) api.togglePlay({ flash: true });
       return true;
-    case 'ArrowLeft': api.seekBy(-5); return true;
-    case 'ArrowRight': api.seekBy(5); return true;
-    case 'j': api.seekBy(-10); return true;
-    case 'l': api.seekBy(10); return true;
-    case 'ArrowUp': api.changeVolume(0.05); return true;
-    case 'ArrowDown': api.changeVolume(-0.05); return true;
+    case 'ArrowLeft':
+      api.seekBy(-5);
+      return true;
+    case 'ArrowRight':
+      api.seekBy(5);
+      return true;
+    case 'j':
+      api.seekBy(-10);
+      return true;
+    case 'l':
+      api.seekBy(10);
+      return true;
+    case 'ArrowUp':
+      api.changeVolume(0.05);
+      return true;
+    case 'ArrowDown':
+      api.changeVolume(-0.05);
+      return true;
     case 'm':
       if (once) api.toggleMute({ announce: true });
       return true;
@@ -62,8 +93,6 @@ function handleKey(event, api) {
     case 'p':
       if (once) api.togglePip();
       return true;
-    case '<': api.stepSpeed(-1); return true;
-    case '>': api.stepSpeed(1); return true;
     case 't':
       if (once) api.toggleTheater();
       return true;
@@ -80,8 +109,19 @@ function handleKey(event, api) {
     case '-':
       api.zoomOut();
       return true;
-    case ',': api.stepFrame(-1); return true;
-    case '.': api.stepFrame(1); return true;
-    default: return false;
+    case '<':
+      api.stepSpeed(-1);
+      return true;
+    case '>':
+      api.stepSpeed(1);
+      return true;
+    case ',':
+      api.stepFrame(-1);
+      return true;
+    case '.':
+      api.stepFrame(1);
+      return true;
+    default:
+      return false;
   }
 }

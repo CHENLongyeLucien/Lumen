@@ -1,11 +1,13 @@
 // Appearance: light/dark/system theme and accent color, saved in localStorage
-// (shared by every Lumen page; read synchronously by shared/theme-boot.js).
+// (shared by every Lumen page; read synchronously by shared/theme-boot.ts).
 
-import { $, setupMenu } from './utils.js';
-import { icons } from './icons.js';
+import { parseAppearance, resolveTheme } from '../shared/appearance-state';
+import { APPEARANCE_KEY } from '../shared/types';
+import type { AccentId, Appearance, ThemeChoice } from '../shared/types';
+import { icons } from './icons';
+import { $, setupMenu } from './utils';
 
-const STORAGE_KEY = 'lumen.appearance';
-export const ACCENTS = [
+export const ACCENTS: readonly { id: AccentId; label: string; color: string }[] = [
   { id: 'amber', label: 'Amber', color: '#ffb454' },
   { id: 'orange', label: 'Orange', color: '#ff7a1a' },
   { id: 'red', label: 'Red', color: '#ff4d4f' },
@@ -15,35 +17,33 @@ export const ACCENTS = [
   { id: 'green', label: 'Green', color: '#34d399' },
   { id: 'white', label: 'White', color: '#f4f4f5' },
 ];
-const THEMES = ['light', 'dark', 'system'];
+
+const isThemeChoice = (value: string | undefined): value is ThemeChoice =>
+  value === 'light' || value === 'dark' || value === 'system';
+
 const systemLight = window.matchMedia('(prefers-color-scheme: light)');
 
-function readAppearance() {
+function readAppearance(): Appearance {
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {};
-    return {
-      theme: THEMES.includes(saved.theme) ? saved.theme : 'dark',
-      accent: ACCENTS.some((a) => a.id === saved.accent) ? saved.accent : 'amber',
-    };
+    return parseAppearance(localStorage.getItem(APPEARANCE_KEY));
   } catch {
-    return { theme: 'dark', accent: 'amber' };
+    return parseAppearance(null);
   }
 }
 
-export function initAppearance() {
+export function initAppearance(): void {
   const root = document.documentElement;
-  const btnToggle = $('#btnThemeToggle');
+  const btnToggle = $<HTMLButtonElement>('#btnThemeToggle');
   const menu = $('#appearanceMenu');
   const swatches = $('#accentSwatches');
   let appearance = readAppearance();
 
   setupMenu($('#btnAppearance'), menu);
 
-  const resolvedTheme = () =>
-    appearance.theme === 'system' ? (systemLight.matches ? 'light' : 'dark') : appearance.theme;
+  const currentTheme = (): 'light' | 'dark' => resolveTheme(appearance.theme, systemLight.matches);
 
-  function apply() {
-    const theme = resolvedTheme();
+  function apply(): void {
+    const theme = currentTheme();
     root.dataset.theme = theme;
     root.dataset.accent = appearance.accent;
 
@@ -52,18 +52,18 @@ export function initAppearance() {
     btnToggle.setAttribute('aria-label', label);
     btnToggle.title = label;
 
-    for (const btn of menu.querySelectorAll('[data-theme-choice]')) {
+    for (const btn of menu.querySelectorAll<HTMLElement>('[data-theme-choice]')) {
       btn.setAttribute('aria-checked', String(btn.dataset.themeChoice === appearance.theme));
     }
-    for (const btn of swatches.children) {
+    for (const btn of swatches.querySelectorAll<HTMLElement>('[data-accent]')) {
       btn.setAttribute('aria-checked', String(btn.dataset.accent === appearance.accent));
     }
   }
 
-  function save(changes) {
+  function save(changes: Partial<Appearance>): void {
     appearance = { ...appearance, ...changes };
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(appearance));
+      localStorage.setItem(APPEARANCE_KEY, JSON.stringify(appearance));
     } catch {
       /* storage unavailable: the choice still applies to this page */
     }
@@ -79,18 +79,26 @@ export function initAppearance() {
     btn.setAttribute('role', 'radio');
     btn.setAttribute('aria-label', accent.label);
     btn.title = accent.label;
-    btn.addEventListener('click', () => save({ accent: accent.id }));
+    btn.addEventListener('click', () => {
+      save({ accent: accent.id });
+    });
     swatches.append(btn);
   }
 
-  menu.querySelectorAll('[data-theme-choice]').forEach((btn) =>
-    btn.addEventListener('click', () => save({ theme: btn.dataset.themeChoice })));
-  btnToggle.addEventListener('click', () => save({ theme: resolvedTheme() === 'dark' ? 'light' : 'dark' }));
+  menu.querySelectorAll<HTMLElement>('[data-theme-choice]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const choice = btn.dataset.themeChoice;
+      if (isThemeChoice(choice)) save({ theme: choice });
+    });
+  });
+  btnToggle.addEventListener('click', () => {
+    save({ theme: currentTheme() === 'dark' ? 'light' : 'dark' });
+  });
 
   systemLight.addEventListener('change', apply);
   // Keep other open Lumen tabs in sync.
   window.addEventListener('storage', (event) => {
-    if (event.key === STORAGE_KEY) {
+    if (event.key === APPEARANCE_KEY) {
       appearance = readAppearance();
       apply();
     }

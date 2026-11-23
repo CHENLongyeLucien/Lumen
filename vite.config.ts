@@ -12,8 +12,8 @@ const srcDir = resolve(projectDir, 'src');
  * They are bundled with esbuild as IIFEs and emitted into the Vite output.
  */
 const CLASSIC_ENTRIES: Record<string, string> = {
-  background: 'background.js',
-  'shared/theme-boot': 'shared/theme-boot.js',
+  background: 'background.ts',
+  'shared/theme-boot': 'shared/theme-boot.ts',
 };
 
 function classicScripts(isDev: boolean): Plugin {

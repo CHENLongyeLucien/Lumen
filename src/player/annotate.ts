@@ -2,17 +2,42 @@
 // Strokes are stored in coordinates relative to the video picture (0..1),
 // so they stay in place when the window is resized or the video zoomed.
 
-import { $, clamp, showToast } from './utils.js';
+import type { PlayerContext } from './context';
+import { $, clamp, showToast } from './utils';
 
 const COLORS = ['#ff4d4f', '#ffb454', '#ffe066', '#34d399', '#4c9aff', '#a78bfa', '#ffffff', '#111111'];
-const TOOL_SETTINGS = {
+
+type Tool = 'pen' | 'highlighter' | 'eraser';
+
+const TOOL_SETTINGS: Record<Tool, { alpha: number; widthFactor: number; composite: GlobalCompositeOperation }> = {
   pen: { alpha: 1, widthFactor: 1, composite: 'source-over' },
   highlighter: { alpha: 0.35, widthFactor: 4, composite: 'source-over' },
   eraser: { alpha: 1, widthFactor: 4, composite: 'destination-out' },
 };
 
+const isTool = (value: string | undefined): value is Tool => value !== undefined && value in TOOL_SETTINGS;
+
+interface Point {
+  x: number;
+  y: number;
+}
+
+interface Stroke {
+  tool: Tool;
+  color: string;
+  size: number;
+  points: Point[];
+}
+
+interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 /** Draws strokes into a 2D context, inside the picture rectangle `rect` (canvas pixels). */
-function renderStrokes(g, strokes, rect) {
+function renderStrokes(g: CanvasRenderingContext2D, strokes: readonly Stroke[], rect: Rect): void {
   for (const stroke of strokes) {
     const tool = TOOL_SETTINGS[stroke.tool];
     g.save();
@@ -29,28 +54,45 @@ function renderStrokes(g, strokes, rect) {
       if (i === 0) g.moveTo(x, y);
       else g.lineTo(x, y);
     });
-    if (stroke.points.length === 1) g.lineTo(rect.x + stroke.points[0].x * rect.w + 0.01, rect.y + stroke.points[0].y * rect.h);
+    const [first] = stroke.points;
+    if (stroke.points.length === 1 && first) {
+      g.lineTo(rect.x + first.x * rect.w + 0.01, rect.y + first.y * rect.h);
+    }
     g.stroke();
     g.restore();
   }
 }
 
-export function initAnnotate(ctx, { showUI }) {
+export interface AnnotateApi {
+  toggle(): void;
+  exit(): boolean;
+  drawOnto(target: CanvasRenderingContext2D, width: number, height: number): void;
+}
+
+export function initAnnotate(ctx: PlayerContext, { showUI }: { showUI: () => void }): AnnotateApi {
   const { video, player } = ctx;
-  const canvas = $('#drawCanvas');
+  const canvas = $<HTMLCanvasElement>('#drawCanvas');
   const view = $('#view');
   const toolbar = $('#drawToolbar');
   const colorsBox = $('#drawColors');
-  const sizeInput = $('#drawSize');
-  const g = canvas.getContext('2d');
+  const sizeInput = $<HTMLInputElement>('#drawSize');
+  const drawButtons = [$('#btnDraw'), $('#actDraw')];
+  const context2d = canvas.getContext('2d');
+  if (!context2d) throw new Error('Lumen: 2D canvas unavailable');
+  const g = context2d;
 
-  const strokes = [];
-  const state = { active: false, tool: 'pen', color: COLORS[0], size: 4 };
-  let current = null;
+  const strokes: Stroke[] = [];
+  const state: { active: boolean; tool: Tool; color: string; size: number } = {
+    active: false,
+    tool: 'pen',
+    color: COLORS[0] ?? '#ff4d4f',
+    size: 4,
+  };
+  let current: Stroke | null = null;
   let frameRequested = false;
 
   /** Rectangle of the visible picture inside the canvas (CSS pixels), like object-fit: contain. */
-  function pictureRect(width, height) {
+  function pictureRect(width: number, height: number): Rect {
     let vw = video.videoWidth || 16;
     let vh = video.videoHeight || 9;
     if (ctx.isQuarterTurn?.()) [vw, vh] = [vh, vw];
@@ -58,7 +100,7 @@ export function initAnnotate(ctx, { showUI }) {
     return { x: (width - vw * scale) / 2, y: (height - vh * scale) / 2, w: vw * scale, h: vh * scale };
   }
 
-  function redraw() {
+  function redraw(): void {
     frameRequested = false;
     const dpr = window.devicePixelRatio || 1;
     g.setTransform(1, 0, 0, 1, 0, 0);
@@ -66,14 +108,14 @@ export function initAnnotate(ctx, { showUI }) {
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     renderStrokes(g, strokes, pictureRect(canvas.clientWidth, canvas.clientHeight));
   }
-  const requestRedraw = () => {
+  const requestRedraw = (): void => {
     if (!frameRequested) {
       frameRequested = true;
       requestAnimationFrame(redraw);
     }
   };
 
-  function resize() {
+  function resize(): void {
     const dpr = window.devicePixelRatio || 1;
     canvas.width = Math.max(1, Math.round(canvas.clientWidth * dpr));
     canvas.height = Math.max(1, Math.round(canvas.clientHeight * dpr));
@@ -83,7 +125,7 @@ export function initAnnotate(ctx, { showUI }) {
   video.addEventListener('loadedmetadata', requestRedraw);
 
   /** Pointer position → picture coordinates (0..1). The view is only translated/scaled, never rotated. */
-  function toPicture(event) {
+  function toPicture(event: PointerEvent): Point {
     const bounds = view.getBoundingClientRect();
     const x = ((event.clientX - bounds.left) / bounds.width) * canvas.clientWidth;
     const y = ((event.clientY - bounds.top) / bounds.height) * canvas.clientHeight;
@@ -101,15 +143,29 @@ export function initAnnotate(ctx, { showUI }) {
   });
   canvas.addEventListener('pointermove', (event) => {
     if (!current) return;
-    const events = event.getCoalescedEvents?.() ?? [event];
-    for (const e of events) current.points.push(toPicture(e));
+    const stroke = current;
+    for (const e of event.getCoalescedEvents()) stroke.points.push(toPicture(e));
+    if (!event.getCoalescedEvents().length) stroke.points.push(toPicture(event));
     requestRedraw();
   });
-  const endStroke = () => { current = null; };
+  const endStroke = (): void => {
+    current = null;
+  };
   canvas.addEventListener('pointerup', endStroke);
   canvas.addEventListener('pointercancel', endStroke);
 
   /* ---------- Toolbar ---------- */
+
+  function renderToolbar(): void {
+    toolbar.querySelectorAll<HTMLElement>('[data-tool]').forEach((btn) => {
+      btn.setAttribute('aria-pressed', String(btn.dataset.tool === state.tool));
+    });
+    colorsBox.querySelectorAll<HTMLElement>('[data-color]').forEach((btn) => {
+      btn.setAttribute('aria-checked', String(btn.dataset.color === state.color && state.tool !== 'eraser'));
+    });
+    sizeInput.value = String(state.size);
+    sizeInput.style.setProperty('--fill', `${String(((state.size - 1) / 23) * 100)}%`);
+  }
 
   for (const color of COLORS) {
     const btn = document.createElement('button');
@@ -127,45 +183,43 @@ export function initAnnotate(ctx, { showUI }) {
     colorsBox.append(btn);
   }
 
-  toolbar.querySelectorAll('[data-tool]').forEach((btn) =>
-    btn.addEventListener('click', () => { state.tool = btn.dataset.tool; renderToolbar(); }));
+  toolbar.querySelectorAll<HTMLElement>('[data-tool]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const tool = btn.dataset.tool;
+      if (isTool(tool)) state.tool = tool;
+      renderToolbar();
+    });
+  });
   sizeInput.addEventListener('input', () => {
     state.size = clamp(Number(sizeInput.value), 1, 24);
     renderToolbar();
   });
-  $('#drawUndo').addEventListener('click', undo);
-  $('#drawClear').addEventListener('click', clear);
-  $('#drawDone').addEventListener('click', () => setActive(false));
 
-  function renderToolbar() {
-    toolbar.querySelectorAll('[data-tool]').forEach((btn) =>
-      btn.setAttribute('aria-pressed', String(btn.dataset.tool === state.tool)));
-    for (const btn of colorsBox.children) {
-      btn.setAttribute('aria-checked', String(btn.dataset.color === state.color && state.tool !== 'eraser'));
-    }
-    sizeInput.value = String(state.size);
-    sizeInput.style.setProperty('--fill', `${((state.size - 1) / 23) * 100}%`);
-  }
-
-  function undo() {
+  function undo(): void {
     if (strokes.pop()) requestRedraw();
   }
 
-  function clear() {
+  function clear(): void {
     if (!strokes.length) return;
     strokes.length = 0;
     requestRedraw();
     showToast('Drawing cleared');
   }
 
+  $('#drawUndo').addEventListener('click', undo);
+  $('#drawClear').addEventListener('click', clear);
+  $('#drawDone').addEventListener('click', () => {
+    setActive(false);
+  });
+
   /* ---------- Mode ---------- */
 
-  function setActive(on) {
+  function setActive(on: boolean): void {
     if (on && !ctx.source) return;
     state.active = on;
     toolbar.hidden = !on;
     player.classList.toggle('is-drawing', on);
-    for (const btn of [$('#btnDraw'), $('#actDraw')]) {
+    for (const btn of drawButtons) {
       btn.setAttribute('aria-pressed', String(on));
       btn.classList.toggle('is-active', on);
     }
@@ -173,16 +227,17 @@ export function initAnnotate(ctx, { showUI }) {
     showUI();
   }
 
-  const toggle = () => setActive(!state.active);
+  const toggle = (): void => {
+    setActive(!state.active);
+  };
   /** Esc handler: returns true if it closed the drawing mode. */
-  function exit() {
+  function exit(): boolean {
     if (!state.active) return false;
     setActive(false);
     return true;
   }
 
-  $('#btnDraw').addEventListener('click', toggle);
-  $('#actDraw').addEventListener('click', toggle);
+  for (const btn of drawButtons) btn.addEventListener('click', toggle);
 
   document.addEventListener('keydown', (event) => {
     if (state.active && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
@@ -192,18 +247,20 @@ export function initAnnotate(ctx, { showUI }) {
   });
 
   // A drawing belongs to one video.
-  ctx.events.addEventListener('sourcechange', () => {
+  ctx.onSourceChange(() => {
     strokes.length = 0;
     requestRedraw();
   });
 
   /** Paints the drawing on a screenshot of size width × height (video pixels). */
-  function drawOnto(target, width, height) {
+  function drawOnto(target: CanvasRenderingContext2D, width: number, height: number): void {
     if (!strokes.length) return;
     const layer = document.createElement('canvas');
     layer.width = width;
     layer.height = height;
-    renderStrokes(layer.getContext('2d'), strokes, { x: 0, y: 0, w: width, h: height });
+    const layerContext = layer.getContext('2d');
+    if (!layerContext) return;
+    renderStrokes(layerContext, strokes, { x: 0, y: 0, w: width, h: height });
     target.filter = 'none';
     target.drawImage(layer, 0, 0);
   }

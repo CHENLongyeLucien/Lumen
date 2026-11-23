@@ -1,6 +1,6 @@
 // Inline SVG icons (24x24 viewBox, drawn with currentColor).
 
-const svg = (body) =>
+const svg = (body: string): string =>
   `<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false">${body}</svg>`;
 
 const stroke = 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
@@ -43,12 +43,16 @@ export const icons = {
   moon: svg(`<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" ${stroke}/>`),
   folder: svg(`<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" ${stroke}/>`),
   sparkle: svg(`<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM18.5 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" ${stroke}/>`),
-};
+} as const;
+
+export type IconName = keyof typeof icons;
+
+const isIconName = (name: string | undefined): name is IconName => name !== undefined && name in icons;
 
 /** Fills every element carrying data-icon="name" with the matching SVG. */
-export function injectIcons(root = document) {
-  for (const el of root.querySelectorAll('[data-icon]')) {
-    const icon = icons[el.dataset.icon];
-    if (icon) el.insertAdjacentHTML('afterbegin', icon);
+export function injectIcons(root: ParentNode = document): void {
+  for (const el of root.querySelectorAll<HTMLElement>('[data-icon]')) {
+    const name = el.dataset.icon;
+    if (isIconName(name)) el.insertAdjacentHTML('afterbegin', icons[name]);
   }
 }

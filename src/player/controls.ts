@@ -1,25 +1,43 @@
 // Control bar: play/pause, progress bar, time, volume, fullscreen,
 // Picture-in-Picture, click/double-click on the video and auto-hide.
 
-import {
-  $, clamp, formatTime, loadSetting, saveSetting, showToast,
-  anyMenuOpen, onMenuChange, wasMenuJustClosed,
-} from './utils.js';
-import { icons } from './icons.js';
+import { readSetting, writeSetting } from '../shared/storage';
+import { isVolumeSetting } from '../shared/types';
+import type { PlayerContext } from './context';
+import { icons, type IconName } from './icons';
+import { $, anyMenuOpen, clamp, formatTime, onMenuChange, showToast, wasMenuJustClosed } from './utils';
 
 const HIDE_DELAY_MS = 3000;
 const CLICK_DELAY_MS = 220; // wait to tell a single click from a double click
 const SIDE_ZONE = 0.3; // left/right 30% of the video = double-click to skip
 
-export function initControls(ctx) {
+export interface ControlsApi {
+  togglePlay(options?: { flash?: boolean }): void;
+  seekBy(delta: number): void;
+  seekTo(time: number): void;
+  seekToFraction(fraction: number): void;
+  changeVolume(delta: number): void;
+  toggleMute(options?: { announce?: boolean }): void;
+  toggleFullscreen(): void;
+  exitFullscreen(): boolean;
+  togglePip(): Promise<void>;
+  showUI(): void;
+  flashCenter(icon: IconName): void;
+}
+
+const listen = (target: EventTarget, types: string[], handler: () => void): void => {
+  for (const type of types) target.addEventListener(type, handler);
+};
+
+export function initControls(ctx: PlayerContext): ControlsApi {
   const { player, video } = ctx;
   const stage = $('#stage');
   const controls = $('#controls');
-  const btnPlay = $('#btnPlay');
-  const btnMute = $('#btnMute');
-  const volumeSlider = $('#volumeSlider');
-  const btnPip = $('#btnPip');
-  const btnFullscreen = $('#btnFullscreen');
+  const btnPlay = $<HTMLButtonElement>('#btnPlay');
+  const btnMute = $<HTMLButtonElement>('#btnMute');
+  const volumeSlider = $<HTMLInputElement>('#volumeSlider');
+  const btnPip = $<HTMLButtonElement>('#btnPip');
+  const btnFullscreen = $<HTMLButtonElement>('#btnFullscreen');
   const progress = $('#progress');
   const track = $('#progressTrack');
   const played = $('#progressPlayed');
@@ -31,18 +49,17 @@ export function initControls(ctx) {
   const centerIcon = $('#centerIcon');
   const spinner = $('#spinner');
 
-  const hasDuration = () => Number.isFinite(video.duration) && video.duration > 0;
-  const longVideo = () => hasDuration() && video.duration >= 3600;
+  const hasDuration = (): boolean => Number.isFinite(video.duration) && video.duration > 0;
+  const longVideo = (): boolean => hasDuration() && video.duration >= 3600;
 
   /* ---------- Play / pause ---------- */
 
-  function togglePlay({ flash = false } = {}) {
+  function togglePlay({ flash = false }: { flash?: boolean } = {}): void {
     if (!ctx.source) return;
     if (video.paused || video.ended) {
-      video.play().catch((err) => {
-        if (err.name !== 'AbortError' && err.name !== 'NotSupportedError') {
-          console.warn('Lumen: play() failed', err);
-        }
+      video.play().catch((err: unknown) => {
+        if (err instanceof DOMException && (err.name === 'AbortError' || err.name === 'NotSupportedError')) return;
+        console.warn('Lumen: play() failed', err);
       });
     } else {
       video.pause();
@@ -50,7 +67,7 @@ export function initControls(ctx) {
     if (flash) flashCenter(video.paused ? 'pause' : 'play');
   }
 
-  function renderPlayState() {
+  function renderPlayState(): void {
     const paused = video.paused;
     btnPlay.innerHTML = paused ? icons.play : icons.pause;
     const label = paused ? 'Play (K)' : 'Pause (K)';
@@ -60,58 +77,71 @@ export function initControls(ctx) {
     showUI();
   }
 
-  function flashCenter(iconName) {
-    centerIcon.innerHTML = icons[iconName];
-    centerIcon.classList.remove('is-animating');
-    void centerIcon.offsetWidth; // restart the CSS animation
-    centerIcon.classList.add('is-animating');
-  }
-
-  function flashSeek(side, text) {
-    const el = side === 'left' ? $('#seekFlashLeft') : $('#seekFlashRight');
-    el.querySelector('span').textContent = text;
+  /** Restarts a CSS animation on an element. */
+  function replayAnimation(el: HTMLElement): void {
     el.classList.remove('is-animating');
-    void el.offsetWidth;
+    void el.offsetWidth; // force a reflow so the animation starts again
     el.classList.add('is-animating');
   }
 
-  btnPlay.addEventListener('click', () => togglePlay());
-  ['play', 'pause', 'ended', 'emptied'].forEach((type) => video.addEventListener(type, renderPlayState));
+  function flashCenter(iconName: IconName): void {
+    centerIcon.innerHTML = icons[iconName];
+    replayAnimation(centerIcon);
+  }
+
+  function flashSeek(side: 'left' | 'right', text: string): void {
+    const el = $(side === 'left' ? '#seekFlashLeft' : '#seekFlashRight');
+    $('span', el).textContent = text;
+    replayAnimation(el);
+  }
+
+  btnPlay.addEventListener('click', () => {
+    togglePlay();
+  });
+  listen(video, ['play', 'pause', 'ended', 'emptied'], renderPlayState);
 
   /* ---------- Seeking ---------- */
 
-  function seekTo(time) {
+  function seekTo(time: number): void {
     if (!hasDuration()) return;
     video.currentTime = clamp(time, 0, video.duration);
     renderProgress();
     showUI();
   }
 
-  function seekBy(delta) {
+  function seekBy(delta: number): void {
     if (!hasDuration()) return;
     seekTo(video.currentTime + delta);
-    flashSeek(delta < 0 ? 'left' : 'right', `${delta < 0 ? '−' : '+'}${Math.abs(delta)} s`);
+    flashSeek(delta < 0 ? 'left' : 'right', `${delta < 0 ? '−' : '+'}${String(Math.abs(delta))} s`);
   }
 
-  const seekToFraction = (fraction) => hasDuration() && seekTo(fraction * video.duration);
+  function seekToFraction(fraction: number): void {
+    if (hasDuration()) seekTo(fraction * video.duration);
+  }
 
-  $('#btnBack').addEventListener('click', () => seekBy(-10));
-  $('#btnForward').addEventListener('click', () => seekBy(10));
+  $('#btnBack').addEventListener('click', () => {
+    seekBy(-10);
+  });
+  $('#btnForward').addEventListener('click', () => {
+    seekBy(10);
+  });
 
   /* ---------- Click / double-click on the video ---------- */
 
   let clickTimer = 0;
   // Drawing and panning (zoom) also use the stage: their gestures are not clicks.
-  const stageBusy = () => ctx.isDrawing?.() || ctx.wasPanning?.();
+  const stageBusy = (): boolean => Boolean(ctx.isDrawing?.() ?? false) || Boolean(ctx.wasPanning?.() ?? false);
 
   stage.addEventListener('click', () => {
     if (!ctx.source || wasMenuJustClosed() || stageBusy()) return;
-    clearTimeout(clickTimer);
-    clickTimer = setTimeout(() => togglePlay({ flash: true }), CLICK_DELAY_MS);
+    window.clearTimeout(clickTimer);
+    clickTimer = window.setTimeout(() => {
+      togglePlay({ flash: true });
+    }, CLICK_DELAY_MS);
   });
 
   stage.addEventListener('dblclick', (event) => {
-    clearTimeout(clickTimer);
+    window.clearTimeout(clickTimer);
     if (!ctx.source || stageBusy()) return;
     const rect = stage.getBoundingClientRect();
     const x = (event.clientX - rect.left) / rect.width;
@@ -125,61 +155,77 @@ export function initControls(ctx) {
   let scrubbing = false;
   let scrubTime = 0;
 
-  function renderProgress() {
+  function renderProgress(): void {
     const duration = hasDuration() ? video.duration : 0;
     const current = scrubbing ? scrubTime : video.currentTime;
     const pct = duration ? clamp((current / duration) * 100, 0, 100) : 0;
-    played.style.width = `${pct}%`;
-    thumb.style.left = `${pct}%`;
+    played.style.width = `${String(pct)}%`;
+    thumb.style.left = `${String(pct)}%`;
     timeCurrent.textContent = formatTime(current, longVideo());
     progress.setAttribute('aria-valuenow', String(Math.floor(current)));
     progress.setAttribute('aria-valuetext', `${formatTime(current)} of ${formatTime(duration)}`);
   }
 
-  function renderBuffered() {
-    if (!hasDuration()) { buffered.style.width = '0'; return; }
+  function renderBuffered(): void {
+    if (!hasDuration()) {
+      buffered.style.width = '0';
+      return;
+    }
     const ranges = video.buffered;
     const t = video.currentTime;
     let end = 0;
     for (let i = 0; i < ranges.length; i++) {
-      if (ranges.start(i) <= t + 0.5 && ranges.end(i) >= t) { end = ranges.end(i); break; }
+      if (ranges.start(i) <= t + 0.5 && ranges.end(i) >= t) {
+        end = ranges.end(i);
+        break;
+      }
     }
-    buffered.style.width = `${clamp((end / video.duration) * 100, 0, 100)}%`;
+    buffered.style.width = `${String(clamp((end / video.duration) * 100, 0, 100))}%`;
   }
 
-  function renderDuration() {
+  function renderDuration(): void {
     timeDuration.textContent = formatTime(video.duration, longVideo());
     progress.setAttribute('aria-valuemax', String(Math.floor(hasDuration() ? video.duration : 0)));
     renderProgress();
     renderBuffered();
   }
 
-  video.addEventListener('timeupdate', () => { renderProgress(); renderBuffered(); });
+  video.addEventListener('timeupdate', () => {
+    renderProgress();
+    renderBuffered();
+  });
   video.addEventListener('progress', renderBuffered);
-  ['durationchange', 'loadedmetadata', 'emptied'].forEach((type) => video.addEventListener(type, renderDuration));
+  listen(video, ['durationchange', 'loadedmetadata', 'emptied'], renderDuration);
 
   // Smooth progress while playing (timeupdate only fires ~4 times per second).
   let rafId = 0;
-  const tick = () => { renderProgress(); rafId = requestAnimationFrame(tick); };
-  video.addEventListener('playing', () => { cancelAnimationFrame(rafId); rafId = requestAnimationFrame(tick); });
-  ['pause', 'waiting', 'ended', 'emptied'].forEach((type) =>
-    video.addEventListener(type, () => cancelAnimationFrame(rafId)));
+  const tick = (): void => {
+    renderProgress();
+    rafId = requestAnimationFrame(tick);
+  };
+  video.addEventListener('playing', () => {
+    cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(tick);
+  });
+  listen(video, ['pause', 'waiting', 'ended', 'emptied'], () => {
+    cancelAnimationFrame(rafId);
+  });
 
-  const fractionAt = (clientX) => {
+  const fractionAt = (clientX: number): number => {
     const rect = track.getBoundingClientRect();
     return clamp((clientX - rect.left) / rect.width, 0, 1);
   };
 
-  function updateBubble(clientX) {
+  function updateBubble(clientX: number): void {
     if (!hasDuration()) return;
     const fraction = fractionAt(clientX);
     bubble.textContent = formatTime(fraction * video.duration, longVideo());
     const width = progress.clientWidth;
     const half = bubble.offsetWidth / 2;
-    bubble.style.left = `${clamp(fraction * width, half, width - half)}px`;
+    bubble.style.left = `${String(clamp(fraction * width, half, width - half))}px`;
   }
 
-  function scrubTo(clientX) {
+  function scrubTo(clientX: number): void {
     scrubTime = fractionAt(clientX) * video.duration;
     video.currentTime = scrubTime;
     renderProgress();
@@ -197,7 +243,7 @@ export function initControls(ctx) {
     updateBubble(event.clientX);
     if (scrubbing) scrubTo(event.clientX);
   });
-  const endScrub = () => {
+  const endScrub = (): void => {
     if (!scrubbing) return;
     scrubbing = false;
     player.classList.remove('is-scrubbing');
@@ -205,83 +251,99 @@ export function initControls(ctx) {
     renderProgress();
     showUI();
   };
-  progress.addEventListener('pointerup', endScrub);
-  progress.addEventListener('pointercancel', endScrub);
+  listen(progress, ['pointerup', 'pointercancel'], endScrub);
   progress.addEventListener('pointerenter', () => progress.classList.add('is-hovering'));
-  progress.addEventListener('pointerleave', () => { if (!scrubbing) progress.classList.remove('is-hovering'); });
+  progress.addEventListener('pointerleave', () => {
+    if (!scrubbing) progress.classList.remove('is-hovering');
+  });
   progress.addEventListener('keydown', (event) => {
-    if (event.key === 'Home') { seekTo(0); event.preventDefault(); }
-    if (event.key === 'End') { seekTo(video.duration); event.preventDefault(); }
+    if (event.key === 'Home') {
+      seekTo(0);
+      event.preventDefault();
+    }
+    if (event.key === 'End') {
+      seekTo(video.duration);
+      event.preventDefault();
+    }
   });
 
   /* ---------- Volume ---------- */
 
   let lastAudibleVolume = 1;
 
-  function setVolume(value) {
+  function setVolume(value: number): void {
     const volume = clamp(Math.round(value * 100) / 100, 0, 1);
     video.volume = volume;
     if (volume > 0) video.muted = false;
   }
 
-  function changeVolume(delta) {
+  function changeVolume(delta: number): void {
     const base = video.muted ? 0 : video.volume;
     setVolume(base + delta);
-    showToast(`Volume ${Math.round((video.muted ? 0 : video.volume) * 100)}%`);
+    showToast(`Volume ${String(Math.round((video.muted ? 0 : video.volume) * 100))}%`);
   }
 
-  function toggleMute({ announce = false } = {}) {
+  function toggleMute({ announce = false }: { announce?: boolean } = {}): void {
     if (video.muted || video.volume === 0) {
       video.muted = false;
       if (video.volume === 0) video.volume = lastAudibleVolume || 0.5;
     } else {
       video.muted = true;
     }
-    if (announce) showToast(video.muted ? 'Muted' : `Volume ${Math.round(video.volume * 100)}%`);
+    if (announce) showToast(video.muted ? 'Muted' : `Volume ${String(Math.round(video.volume * 100))}%`);
   }
 
   let saveVolumeTimer = 0;
-  function renderVolume() {
+  function renderVolume(): void {
     const level = video.muted ? 0 : video.volume;
     if (video.volume > 0) lastAudibleVolume = video.volume;
-    volumeSlider.value = String(Math.round(level * 100));
-    volumeSlider.style.setProperty('--fill', `${level * 100}%`);
-    volumeSlider.setAttribute('aria-valuetext', `${Math.round(level * 100)}%`);
+    const percent = Math.round(level * 100);
+    volumeSlider.value = String(percent);
+    volumeSlider.style.setProperty('--fill', `${String(level * 100)}%`);
+    volumeSlider.setAttribute('aria-valuetext', `${String(percent)}%`);
     btnMute.innerHTML = level === 0 ? icons.volumeMute : level < 0.5 ? icons.volumeLow : icons.volumeHigh;
     const label = level === 0 ? 'Unmute (M)' : 'Mute (M)';
     btnMute.setAttribute('aria-label', label);
     btnMute.title = label;
-    clearTimeout(saveVolumeTimer);
-    saveVolumeTimer = setTimeout(() => saveSetting('volume', { level: video.volume, muted: video.muted }), 300);
+    window.clearTimeout(saveVolumeTimer);
+    saveVolumeTimer = window.setTimeout(() => {
+      void writeSetting('local', 'volume', { level: video.volume, muted: video.muted });
+    }, 300);
   }
 
-  btnMute.addEventListener('click', () => toggleMute());
-  volumeSlider.addEventListener('input', () => setVolume(Number(volumeSlider.value) / 100));
+  btnMute.addEventListener('click', () => {
+    toggleMute();
+  });
+  volumeSlider.addEventListener('input', () => {
+    setVolume(Number(volumeSlider.value) / 100);
+  });
   video.addEventListener('volumechange', renderVolume);
   renderVolume();
-  loadSetting('volume', { level: 1, muted: false }).then((saved) => {
-    video.volume = clamp(Number(saved?.level ?? 1), 0, 1);
-    video.muted = Boolean(saved?.muted);
+  void readSetting('local', 'volume', { level: 1, muted: false }, isVolumeSetting).then((saved) => {
+    video.volume = clamp(saved.level, 0, 1);
+    video.muted = saved.muted;
     renderVolume();
   });
 
   /* ---------- Fullscreen ---------- */
 
-  function toggleFullscreen() {
+  function toggleFullscreen(): void {
     if (document.fullscreenElement) {
-      document.exitFullscreen().catch(() => {});
+      document.exitFullscreen().catch(() => undefined);
     } else {
-      player.requestFullscreen().catch(() => showToast('Fullscreen is not available here'));
+      player.requestFullscreen().catch(() => {
+        showToast('Fullscreen is not available here');
+      });
     }
   }
 
-  function exitFullscreen() {
+  function exitFullscreen(): boolean {
     if (!document.fullscreenElement) return false;
-    document.exitFullscreen().catch(() => {});
+    document.exitFullscreen().catch(() => undefined);
     return true;
   }
 
-  function renderFullscreen() {
+  function renderFullscreen(): void {
     const active = Boolean(document.fullscreenElement);
     btnFullscreen.innerHTML = active ? icons.fullscreenExit : icons.fullscreen;
     const label = active ? 'Exit fullscreen (F)' : 'Fullscreen (F)';
@@ -295,7 +357,7 @@ export function initControls(ctx) {
 
   /* ---------- Picture-in-Picture ---------- */
 
-  async function togglePip() {
+  async function togglePip(): Promise<void> {
     if (!document.pictureInPictureEnabled) return;
     try {
       if (document.pictureInPictureElement) await document.exitPictureInPicture();
@@ -305,41 +367,46 @@ export function initControls(ctx) {
     }
   }
 
-  const renderPip = () => {
+  const renderPip = (): void => {
     btnPip.disabled = video.readyState < HTMLMediaElement.HAVE_METADATA || !video.videoWidth;
     btnPip.classList.toggle('is-active', document.pictureInPictureElement === video);
   };
 
   if (!document.pictureInPictureEnabled) btnPip.hidden = true;
-  btnPip.addEventListener('click', togglePip);
-  ['loadedmetadata', 'emptied', 'enterpictureinpicture', 'leavepictureinpicture'].forEach((type) =>
-    video.addEventListener(type, renderPip));
+  btnPip.addEventListener('click', () => {
+    void togglePip();
+  });
+  listen(video, ['loadedmetadata', 'emptied', 'enterpictureinpicture', 'leavepictureinpicture'], renderPip);
   renderPip();
 
   /* ---------- Loading spinner ---------- */
 
   let spinnerTimer = 0;
-  const showSpinner = () => {
-    clearTimeout(spinnerTimer);
-    spinnerTimer = setTimeout(() => { spinner.hidden = false; }, 350);
+  const showSpinner = (): void => {
+    window.clearTimeout(spinnerTimer);
+    spinnerTimer = window.setTimeout(() => {
+      spinner.hidden = false;
+    }, 350);
   };
-  const hideSpinner = () => { clearTimeout(spinnerTimer); spinner.hidden = true; };
-  ['waiting', 'seeking'].forEach((type) => video.addEventListener(type, showSpinner));
-  ['playing', 'canplay', 'seeked', 'pause', 'error', 'emptied', 'loadeddata'].forEach((type) =>
-    video.addEventListener(type, hideSpinner));
+  const hideSpinner = (): void => {
+    window.clearTimeout(spinnerTimer);
+    spinner.hidden = true;
+  };
+  listen(video, ['waiting', 'seeking'], showSpinner);
+  listen(video, ['playing', 'canplay', 'seeked', 'pause', 'error', 'emptied', 'loadeddata'], hideSpinner);
 
   /* ---------- Auto-hide ---------- */
 
   let hideTimer = 0;
   let pointerOverControls = false;
 
-  function showUI() {
+  function showUI(): void {
     player.classList.remove('ui-hidden');
-    clearTimeout(hideTimer);
-    hideTimer = setTimeout(hideUI, HIDE_DELAY_MS);
+    window.clearTimeout(hideTimer);
+    hideTimer = window.setTimeout(hideUI, HIDE_DELAY_MS);
   }
 
-  function hideUI() {
+  function hideUI(): void {
     if (!ctx.source || video.paused || scrubbing || pointerOverControls || anyMenuOpen()) return;
     player.classList.add('ui-hidden');
   }
@@ -350,18 +417,33 @@ export function initControls(ctx) {
   });
   player.addEventListener('pointerleave', () => {
     if (video.paused) return;
-    clearTimeout(hideTimer);
-    hideTimer = setTimeout(hideUI, 700);
+    window.clearTimeout(hideTimer);
+    hideTimer = window.setTimeout(hideUI, 700);
   });
-  controls.addEventListener('pointerenter', () => { pointerOverControls = true; showUI(); });
-  controls.addEventListener('pointerleave', () => { pointerOverControls = false; showUI(); });
+  controls.addEventListener('pointerenter', () => {
+    pointerOverControls = true;
+    showUI();
+  });
+  controls.addEventListener('pointerleave', () => {
+    pointerOverControls = false;
+    showUI();
+  });
   controls.addEventListener('focusin', showUI);
   onMenuChange(showUI);
 
   renderPlayState();
 
   return {
-    togglePlay, seekBy, seekTo, seekToFraction, changeVolume, toggleMute,
-    toggleFullscreen, exitFullscreen, togglePip, showUI, flashCenter,
+    togglePlay,
+    seekBy,
+    seekTo,
+    seekToFraction,
+    changeVolume,
+    toggleMute,
+    toggleFullscreen,
+    exitFullscreen,
+    togglePip,
+    showUI,
+    flashCenter,
   };
 }

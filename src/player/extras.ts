@@ -1,32 +1,42 @@
 // Enhancements: A-B loop, frame by frame, screenshot, remembered position.
 
-import { $, clamp, formatTime, loadSetting, saveSetting, showToast } from './utils.js';
+import { readSetting, writeSetting } from '../shared/storage';
+import { isSavedPositions } from '../shared/types';
+import type { SavedPositions } from '../shared/types';
+import type { PlayerContext } from './context';
+import { $, clamp, formatTime, showToast } from './utils';
 
-const POSITIONS_KEY = 'positions';
 const MAX_POSITIONS = 200;
 const SAVE_INTERVAL_MS = 5000;
 const MIN_DURATION_TO_REMEMBER = 30; // seconds; short clips always start at 0
 const DEFAULT_FRAME = 1 / 30;
 
-export function initExtras(ctx, { showUI }) {
+export interface ExtrasApi {
+  cycleLoop(): void;
+  stepFrame(direction: number): void;
+  screenshot(): Promise<void>;
+  getFrameRate(): number | null;
+}
+
+export function initExtras(ctx: PlayerContext, { showUI }: { showUI: () => void }): ExtrasApi {
   const { video } = ctx;
-  const btnLoop = $('#btnLoop');
+  const btnLoop = $<HTMLButtonElement>('#btnLoop');
   const loopRange = $('#loopRange');
-  const hasDuration = () => Number.isFinite(video.duration) && video.duration > 0;
-  const fmt = (t) => formatTime(t, hasDuration() && video.duration >= 3600);
+  const hasDuration = (): boolean => Number.isFinite(video.duration) && video.duration > 0;
+  const fmt = (t: number): string => formatTime(t, hasDuration() && video.duration >= 3600);
 
   /* ---------- A-B loop ---------- */
 
-  let loopA = null;
-  let loopB = null;
+  let loopA: number | null = null;
+  let loopB: number | null = null;
 
-  function clearLoop() {
+  function clearLoop(): void {
     loopA = null;
     loopB = null;
     renderLoop();
   }
 
-  function cycleLoop() {
+  function cycleLoop(): void {
     if (!hasDuration()) return;
     const t = video.currentTime;
     if (loopA === null) {
@@ -48,41 +58,47 @@ export function initExtras(ctx, { showUI }) {
     renderLoop();
   }
 
-  function renderLoop() {
-    const label = loopA === null ? 'A-B loop: set point A' : loopB === null ? 'A-B loop: set point B' : 'A-B loop: turn off';
+  function renderLoop(): void {
+    const label =
+      loopA === null ? 'A-B loop: set point A' : loopB === null ? 'A-B loop: set point B' : 'A-B loop: turn off';
     btnLoop.setAttribute('aria-label', label);
     btnLoop.title = label;
     btnLoop.setAttribute('aria-pressed', String(loopB !== null));
     btnLoop.classList.toggle('is-active', loopB !== null);
     btnLoop.classList.toggle('is-pending', loopA !== null && loopB === null);
-    if (loopA === null || !hasDuration()) { loopRange.hidden = true; return; }
+    if (loopA === null || !hasDuration()) {
+      loopRange.hidden = true;
+      return;
+    }
     const end = loopB ?? loopA;
     loopRange.hidden = false;
-    loopRange.style.left = `${(loopA / video.duration) * 100}%`;
-    loopRange.style.width = `${((end - loopA) / video.duration) * 100}%`;
+    loopRange.style.left = `${String((loopA / video.duration) * 100)}%`;
+    loopRange.style.width = `${String(((end - loopA) / video.duration) * 100)}%`;
   }
 
-  function enforceLoop(time) {
-    if (loopB !== null && !video.seeking && time >= loopB) video.currentTime = loopA;
+  function enforceLoop(time: number): void {
+    if (loopA !== null && loopB !== null && !video.seeking && time >= loopB) video.currentTime = loopA;
   }
 
   btnLoop.addEventListener('click', cycleLoop);
-  video.addEventListener('timeupdate', () => enforceLoop(video.currentTime));
+  video.addEventListener('timeupdate', () => {
+    enforceLoop(video.currentTime);
+  });
   video.addEventListener('ended', () => {
-    if (loopB === null) return;
+    if (loopA === null || loopB === null) return;
     video.currentTime = loopA;
-    video.play().catch(() => {});
+    video.play().catch(() => undefined);
   });
 
   /* ---------- Frame rate estimate + frame by frame ---------- */
 
   let frameDuration = DEFAULT_FRAME;
   let frameSamples = 0;
-  let lastFrame = null;
+  let lastFrame: VideoFrameCallbackMetadata | null = null;
   let frameCallbackId = 0;
   const supportsFrameCallback = 'requestVideoFrameCallback' in HTMLVideoElement.prototype;
 
-  function onVideoFrame(_now, meta) {
+  function onVideoFrame(_now: DOMHighResTimeStamp, meta: VideoFrameCallbackMetadata): void {
     if (lastFrame && meta.presentedFrames - lastFrame.presentedFrames === 1 && video.playbackRate === 1) {
       const dt = meta.mediaTime - lastFrame.mediaTime;
       if (dt > 1 / 121 && dt < 1 / 9) {
@@ -102,18 +118,18 @@ export function initExtras(ctx, { showUI }) {
     frameCallbackId = video.requestVideoFrameCallback(onVideoFrame);
   });
 
-  function stepFrame(direction) {
+  function stepFrame(direction: number): void {
     if (!hasDuration()) return;
     video.pause();
     video.currentTime = clamp(video.currentTime + direction * frameDuration, 0, video.duration);
     showUI();
   }
 
-  const getFrameRate = () => (frameSamples >= 5 ? 1 / frameDuration : null);
+  const getFrameRate = (): number | null => (frameSamples >= 5 ? 1 / frameDuration : null);
 
   /* ---------- Screenshot ---------- */
 
-  async function screenshot() {
+  async function screenshot(): Promise<void> {
     if (!video.videoWidth) {
       showToast('No image to capture yet');
       return;
@@ -122,59 +138,73 @@ export function initExtras(ctx, { showUI }) {
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     const g = canvas.getContext('2d');
+    if (!g) {
+      showToast('Screenshot failed');
+      return;
+    }
     g.filter = ctx.imageFilter || 'none';
     g.drawImage(video, 0, 0, canvas.width, canvas.height);
     ctx.drawAnnotations?.(g, canvas.width, canvas.height); // include the user's drawing
     try {
-      const blob = await new Promise((resolve, reject) => {
-        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Empty image'))), 'image/png');
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((b) => {
+          if (b) resolve(b);
+          else reject(new Error('Empty image'));
+        }, 'image/png');
       });
-      const base = (ctx.source?.name || 'lumen').replace(/\.[^.]+$/, '');
+      const base = (ctx.source?.name ?? 'lumen').replace(/\.[^.]+$/, '');
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
       link.download = `${base}_${fmt(video.currentTime).replace(/:/g, '-')}.png`;
       link.click();
-      setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+      window.setTimeout(() => {
+        URL.revokeObjectURL(link.href);
+      }, 10000);
       showToast('Screenshot saved');
     } catch (err) {
       console.warn('Lumen: screenshot failed', err);
-      showToast(err.name === 'SecurityError'
-        ? 'This video comes from another site that does not allow screenshots'
-        : 'Screenshot failed');
+      showToast(
+        err instanceof DOMException && err.name === 'SecurityError'
+          ? 'This video comes from another site that does not allow screenshots'
+          : 'Screenshot failed',
+      );
     }
   }
 
   /* ---------- Remember playback position ---------- */
 
-  let positionKey = null;
-  let restorePromise = null;
+  let positionKey: string | null = null;
+  let restorePromise: Promise<number | null> | null = null;
   let canSave = false;
   let lastSaveAt = 0;
-  let writeChain = Promise.resolve();
+  let writeChain: Promise<void> = Promise.resolve();
 
-  async function readPositions() {
-    const all = await loadSetting(POSITIONS_KEY, {});
-    return all && typeof all === 'object' ? all : {};
-  }
+  const readPositions = (): Promise<SavedPositions> => readSetting('local', 'positions', {}, isSavedPositions);
 
-  function writePosition(key, time) {
+  function writePosition(key: string, time: number | null): void {
     writeChain = writeChain
       .then(async () => {
         const all = await readPositions();
-        if (time === null) delete all[key];
-        else all[key] = { time, at: Date.now() };
+        if (time === null) {
+          delete all[key];
+        } else {
+          all[key] = { time, at: Date.now() };
+        }
         const keys = Object.keys(all);
         if (keys.length > MAX_POSITIONS) {
-          keys.sort((a, b) => all[a].at - all[b].at)
+          keys
+            .sort((a, b) => (all[a]?.at ?? 0) - (all[b]?.at ?? 0))
             .slice(0, keys.length - MAX_POSITIONS)
-            .forEach((k) => delete all[k]);
+            .forEach((k) => {
+              delete all[k];
+            });
         }
-        await saveSetting(POSITIONS_KEY, all);
+        await writeSetting('local', 'positions', all);
       })
-      .catch(() => {});
+      .catch(() => undefined);
   }
 
-  function savePosition(force = false) {
+  function savePosition(force = false): void {
     if (!canSave || !positionKey || !hasDuration() || video.duration < MIN_DURATION_TO_REMEMBER) return;
     const now = Date.now();
     if (!force && now - lastSaveAt < SAVE_INTERVAL_MS) return;
@@ -183,10 +213,11 @@ export function initExtras(ctx, { showUI }) {
     writePosition(positionKey, t > 5 && t < video.duration - 5 ? t : null);
   }
 
-  ctx.events.addEventListener('sourcechange', (event) => {
+  ctx.onSourceChange((source) => {
     if (canSave) savePosition(true); // keep the previous file's position
-    positionKey = event.detail.key;
-    restorePromise = readPositions().then((all) => all[positionKey]?.time ?? null);
+    const key = source.key;
+    positionKey = key;
+    restorePromise = readPositions().then((all) => all[key]?.time ?? null);
     canSave = false;
     lastSaveAt = 0;
     frameDuration = DEFAULT_FRAME;
@@ -194,8 +225,7 @@ export function initExtras(ctx, { showUI }) {
     clearLoop();
   });
 
-  video.addEventListener('loadedmetadata', async () => {
-    renderLoop();
+  async function restorePosition(): Promise<void> {
     const pending = restorePromise;
     restorePromise = null;
     if (!pending) return;
@@ -205,14 +235,24 @@ export function initExtras(ctx, { showUI }) {
     if (time < 5 || time > video.duration - 5) return;
     video.currentTime = time;
     showToast(`Resumed at ${fmt(time)} · press 0 to start over`, 3500);
-  });
+  }
 
-  video.addEventListener('timeupdate', () => savePosition());
-  video.addEventListener('pause', () => savePosition(true));
+  video.addEventListener('loadedmetadata', () => {
+    renderLoop();
+    void restorePosition();
+  });
+  video.addEventListener('timeupdate', () => {
+    savePosition();
+  });
+  video.addEventListener('pause', () => {
+    savePosition(true);
+  });
   video.addEventListener('ended', () => {
     if (positionKey && loopB === null) writePosition(positionKey, null);
   });
-  window.addEventListener('pagehide', () => savePosition(true));
+  window.addEventListener('pagehide', () => {
+    savePosition(true);
+  });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') savePosition(true);
   });

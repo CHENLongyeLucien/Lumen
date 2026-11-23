@@ -1,11 +1,24 @@
-// Small shared helpers: DOM, time formatting, storage, toast, popover menus.
+// Small shared helpers: DOM, time formatting, toast, popover menus.
 
-export const $ = (selector, root = document) => root.querySelector(selector);
+/** querySelector that fails loudly: every selector used by the player exists in player.html. */
+export function $<T extends HTMLElement = HTMLElement>(selector: string, root: ParentNode = document): T {
+  const el = root.querySelector<T>(selector);
+  if (!el) throw new Error(`Lumen: missing element ${selector}`);
+  return el;
+}
 
-export const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+/** Closest ancestor (or self) of an event target matching `selector`. */
+export function closestTarget<T extends HTMLElement = HTMLElement>(
+  target: EventTarget | null,
+  selector: string,
+): T | null {
+  return target instanceof Element ? target.closest<T>(selector) : null;
+}
+
+export const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
 
 /** Formats seconds as mm:ss, or h:mm:ss when needed (or forced). */
-export function formatTime(seconds, forceHours = false) {
+export function formatTime(seconds: number, forceHours = false): string {
   const total = Number.isFinite(seconds) && seconds > 0 ? Math.floor(seconds) : 0;
   const h = Math.floor(total / 3600);
   const m = Math.floor((total % 3600) / 60);
@@ -14,17 +27,17 @@ export function formatTime(seconds, forceHours = false) {
   return `${String(m).padStart(2, '0')}:${s}`;
 }
 
-export function formatBytes(bytes) {
+export function formatBytes(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes <= 0) return '—';
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
-  return `${(bytes / 1024 ** i).toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+  return `${(bytes / 1024 ** i).toFixed(i === 0 ? 0 : 1)} ${units[i] ?? 'B'}`;
 }
 
 /** Decoded file name (last path segment) of a URL. */
-export function fileNameFromUrl(rawUrl) {
+export function fileNameFromUrl(rawUrl: string): string {
   try {
-    const segment = new URL(rawUrl).pathname.split('/').filter(Boolean).pop() || '';
+    const segment = new URL(rawUrl).pathname.split('/').filter(Boolean).pop() ?? '';
     try {
       return decodeURIComponent(segment) || 'Video';
     } catch {
@@ -36,63 +49,52 @@ export function fileNameFromUrl(rawUrl) {
 }
 
 /** Lower-case extension without the dot ("" when none). */
-export function extensionOf(name) {
-  const match = /\.([a-z0-9]+)$/i.exec(name || '');
-  return match ? match[1].toLowerCase() : '';
-}
-
-/* ---------- Storage (guarded so the page also runs outside the extension) ---------- */
-
-const storageArea = (area) => globalThis.chrome?.storage?.[area] ?? null;
-
-export async function loadSetting(key, fallback, area = 'local') {
-  const store = storageArea(area);
-  if (!store) return fallback;
-  try {
-    const result = await store.get({ [key]: fallback });
-    return result[key];
-  } catch {
-    return fallback;
-  }
-}
-
-export async function saveSetting(key, value, area = 'local') {
-  const store = storageArea(area);
-  if (!store) return;
-  try {
-    await store.set({ [key]: value });
-  } catch (err) {
-    console.warn('Lumen: could not save setting', key, err);
-  }
+export function extensionOf(name: string): string {
+  const match = /\.([a-z0-9]+)$/i.exec(name);
+  return match?.[1]?.toLowerCase() ?? '';
 }
 
 /* ---------- Toast ---------- */
 
 let toastTimer = 0;
-export function showToast(message, duration = 1800) {
-  const el = $('#toast');
+export function showToast(message: string, duration = 1800): void {
+  const el = document.querySelector<HTMLElement>('#toast');
   if (!el) return;
   el.textContent = message;
   el.classList.add('is-visible');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('is-visible'), duration);
+  window.clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => el.classList.remove('is-visible'), duration);
 }
 
 /* ---------- Popover menus ---------- */
 
-const openMenus = new Set();
-const menuListeners = new Set();
+export interface MenuApi {
+  isOpen(): boolean;
+  contains(node: Node): boolean;
+  open(): void;
+  close(): void;
+  toggle(): void;
+}
+
+const openMenus = new Set<MenuApi>();
+const menuListeners = new Set<() => void>();
 let lastOutsideCloseAt = 0;
 
-const notifyMenuChange = () => menuListeners.forEach((fn) => fn());
+const notifyMenuChange = (): void => {
+  menuListeners.forEach((fn) => {
+    fn();
+  });
+};
 
-export const onMenuChange = (fn) => menuListeners.add(fn);
-export const anyMenuOpen = () => openMenus.size > 0;
+export const onMenuChange = (fn: () => void): void => {
+  menuListeners.add(fn);
+};
+export const anyMenuOpen = (): boolean => openMenus.size > 0;
 /** True right after a menu was closed by clicking outside it (so that click is "consumed"). */
-export const wasMenuJustClosed = () => performance.now() - lastOutsideCloseAt < 400;
+export const wasMenuJustClosed = (): boolean => performance.now() - lastOutsideCloseAt < 400;
 
-export function setupMenu(button, menu, { onOpen } = {}) {
-  const api = {
+export function setupMenu(button: HTMLElement, menu: HTMLElement, options: { onOpen?: () => void } = {}): MenuApi {
+  const api: MenuApi = {
     isOpen: () => !menu.hidden,
     contains: (node) => menu.contains(node) || button.contains(node),
     open() {
@@ -102,11 +104,11 @@ export function setupMenu(button, menu, { onOpen } = {}) {
       const bounds = menu.closest('.player');
       if (bounds) {
         const room = button.getBoundingClientRect().top - bounds.getBoundingClientRect().top - 16;
-        menu.style.maxHeight = `${Math.max(120, room)}px`;
+        menu.style.maxHeight = `${String(Math.max(120, room))}px`;
       }
       button.setAttribute('aria-expanded', 'true');
       openMenus.add(api);
-      onOpen?.();
+      options.onOpen?.();
       notifyMenuChange();
     },
     close() {
@@ -121,13 +123,17 @@ export function setupMenu(button, menu, { onOpen } = {}) {
       else api.open();
     },
   };
-  button.addEventListener('click', () => api.toggle());
+  button.addEventListener('click', () => {
+    api.toggle();
+  });
   return api;
 }
 
-export function closeAllMenus() {
+export function closeAllMenus(): boolean {
   if (!openMenus.size) return false;
-  [...openMenus].forEach((menu) => menu.close());
+  [...openMenus].forEach((menu) => {
+    menu.close();
+  });
   return true;
 }
 
@@ -135,12 +141,13 @@ export function closeAllMenus() {
 document.addEventListener(
   'pointerdown',
   (event) => {
+    const target = event.target;
     for (const menu of [...openMenus]) {
-      if (!menu.contains(event.target)) {
+      if (!(target instanceof Node) || !menu.contains(target)) {
         menu.close();
         lastOutsideCloseAt = performance.now();
       }
     }
   },
-  true
+  true,
 );
