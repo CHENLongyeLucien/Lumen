@@ -9,7 +9,7 @@ const src = new URLSearchParams(location.search).get('src');
 const playerUrl = chrome.runtime.getURL('player/player.html');
 
 async function refreshStatus() {
-  let allowed = false;
+  let allowed;
   try {
     allowed = await chrome.extension.isAllowedFileSchemeAccess();
   } catch {

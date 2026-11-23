@@ -14,7 +14,7 @@ function decodeText(buffer) {
   }
 }
 
-const normalizeNewlines = (text) => text.replace(/^﻿/, '').replace(/\r\n?/g, '\n');
+const normalizeNewlines = (text) => text.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
 
 /** Converts SubRip (.srt) text to WebVTT. */
 export function srtToVtt(srt) {
